@@ -1,0 +1,2 @@
+# Husky hooks must be LF — CRLF makes pnpm treat `\r` as part of the command name
+.husky/* text eol=lf

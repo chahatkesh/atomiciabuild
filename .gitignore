@@ -1,0 +1,33 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# next.js
+.next
+out
+
+# env
+.env
+.env.local
+.env.*.local
+
+# testing
+coverage
+
+# misc
+.DS_Store
+*.pem
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
+
+# ide
+.idea
+.vscode
