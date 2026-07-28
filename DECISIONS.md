@@ -1,0 +1,135 @@
+# DECISIONS.md
+
+Architectural and product decisions for the Clinic Shift Scheduler, with rationale and tradeoffs.
+
+## 1. Next.js 16 + App Router
+
+**Decision:** Use Next.js 16.2 with App Router, TypeScript 6.0, and Turbopack.
+
+**Rationale:** Matches current LTS, React 19 support, and Vercel-first deployment. App Router gives server components for auth guards and thin API routes.
+
+**Tradeoff:** Next 16 renamed `middleware.ts` → `proxy.ts` and removed `next lint`; we use ESLint directly.
+
+---
+
+## 2. MongoDB Atlas + Mongoose
+
+**Decision:** MongoDB Atlas (user-provided URI) with Mongoose 9 and a global connection cache for serverless.
+
+**Rationale:** Document model fits shifts, claims, and import audit rows. Atlas free tier is sufficient for the take-home demo.
+
+**Tradeoff:** M0 has connection/ops limits (~500 connections, ~100 ops/sec) and auto-pauses after 30 days idle.
+
+---
+
+## 3. Auth.js v5 Credentials + JWT
+
+**Decision:** Auth.js v5 (`next-auth@beta`) with Credentials provider and `session.strategy: "jwt"`.
+
+**Rationale:** Credentials provider cannot use DB-backed sessions. JWT carries `role` and `profession` via callbacks — no DB hit per request for authorization checks.
+
+**Tradeoff:** JWT invalidation requires short TTL or explicit session versioning (not needed for this scope).
+
+---
+
+## 4. Authorization outside proxy
+
+**Decision:** `src/proxy.ts` only does optimistic cookie-based redirects. Real authorization is in `requireUser()` / `requireManager()` on every server entry point.
+
+**Rationale:** Next.js 16 guidance and CVE-2025-29927 — proxy/middleware is not a reliable security boundary.
+
+**Tradeoff:** Slightly more boilerplate, but auditable and testable.
+
+---
+
+## 5. Hybrid API + Server Actions
+
+**Decision:** Thin REST handlers under `app/api/*` for domain operations; Server Actions reserved as optional form wrappers calling the same service layer.
+
+**Rationale:** REST surface is curl-able for reviewers, services stay unit-testable, TanStack Query can poll `/api/*` endpoints.
+
+**Tradeoff:** More files than actions-only approach.
+
+---
+
+## 6. Concurrency via transactions + version bumps
+
+**Decision:** Claim mutations run in `session.withTransaction()`. Re-read shift counters, check overlap, then `$inc` `version` on both shift and user documents.
+
+**Rationale:** Two concurrent claims on the same shift or overlapping claims by one staff member contend on shared documents → `WriteConflict` → automatic retry via callback API.
+
+**Tradeoff:** Requires replica set (Atlas M0 is a 3-node replica set; local dev uses `docker compose` with `rs.initiate`).
+
+---
+
+## 7. Time modeling
+
+**Decision:** Store clinic-local `date` + `startTime`/`endTime` strings, plus derived UTC `startAt`/`endAt`. Overnight shifts roll `endAt` to next day when `end <= start`.
+
+**Rationale:** Matches messy CSV input (22:00–06:00, 16:00–00:00, `10:00+1`). Overlap uses half-open interval test.
+
+**Tradeoff:** All display/formatting must respect `CLINIC_TIMEZONE`.
+
+---
+
+## 8. Editing claimed shifts
+
+**Decision:** On time change, revalidate all active claims. Violating claims move to `status: "released"` with reason + audit record. Manager sees impact preview before save.
+
+**Rationale:** Never silently drop staff from a shift they claimed in good faith.
+
+**Tradeoff:** More UX work; staff may need to re-claim.
+
+---
+
+## 9. CSV import — merge conflicting rows
+
+**Decision:** Natural key `(date, startAt, endAt)`. Duplicate windows with different requirements merge by taking **max per profession**, report as `merged`.
+
+**Rationale:** Data shows systematic duplicates (5098 vs 5099, 5073 vs 5075). Merging avoids double-booking the same time slot.
+
+**Alternative considered:** Keep as parallel shifts — rejected because it violates real-world semantics.
+
+---
+
+## 10. Import identity key
+
+**Decision:** Email is the staff identity key. Repair `(at)` → `@`, trim whitespace, normalize roles to enum.
+
+**Rationale:** Email is the only stable identifier across duplicate `staff_id` rows.
+
+**Tradeoff:** Rows with missing/duplicate emails are rejected or merged with explicit report entries.
+
+---
+
+## 11. Realtime — polling first
+
+**Decision:** TanStack Query polling + refetch-on-focus behind a pluggable `RealtimePort` interface. No WebSocket/SSE in Phase 0.
+
+**Rationale:** Vercel serverless cannot hold long-lived WebSockets. M0 ops/sec cap makes aggressive polling risky.
+
+**Tradeoff:** Updates are not instant; acceptable for MVP, documented for stretch goal.
+
+---
+
+## 12. Ant Design 6
+
+**Decision:** antd 6 with CSS variables, `@ant-design/nextjs-registry` for SSR, ConfigProvider theme tokens.
+
+**Rationale:** Native React 19 support, mature component set for tables/forms/calendar layouts.
+
+**Tradeoff:** No dot-subcomponents in App Router — import subcomponents from explicit paths.
+
+---
+
+## 13. Barrels — per module, split client/server
+
+**Decision:** One barrel per module. Auth split into `client.ts` (schemas) and `server.ts` (mongoose-dependent code).
+
+**Rationale:** Prevents accidental mongoose bundling into client components (build failure we hit during scaffold).
+
+---
+
+## One thing I'd do differently with more time
+
+**Add integration tests against a real MongoDB replica set** covering concurrent claim scenarios (two staff claiming the last nurse slot simultaneously, overlapping shift rejection under load). Unit tests cover time math today, but the highest-risk requirement is concurrent correctness — and that's best validated with parallel test workers hitting the same shift document.
