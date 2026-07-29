@@ -4,17 +4,17 @@ A fullstack clinic shift scheduling app built for the Atomica take-home brief. M
 
 ## Stack
 
-| Layer       | Choice                                               |
-| ----------- | ---------------------------------------------------- |
-| Framework   | Next.js 16 (App Router, Turbopack)                   |
-| UI          | Ant Design 6 + `@ant-design/nextjs-registry`         |
-| Database    | MongoDB Atlas via Mongoose 9                         |
-| Auth        | Auth.js v5 (Credentials + JWT sessions)              |
-| Validation  | Zod 4                                                |
-| Client data | TanStack Query (polling/refetch-on-focus)            |
-| Tests       | Vitest                                               |
-| Tooling     | pnpm, Husky, commitlint, lint-staged, GitHub Actions |
-| Deploy      | Vercel                                               |
+| Layer       | Choice                                                      |
+| ----------- | ----------------------------------------------------------- |
+| Framework   | Next.js 16 (App Router, Turbopack)                          |
+| UI          | Ant Design 6 + Framer dark design system (`docs/design.md`) |
+| Database    | MongoDB Atlas via Mongoose 9                                |
+| Auth        | Auth.js v5 (Credentials + JWT sessions)                     |
+| Validation  | Zod 4                                                       |
+| Client data | TanStack Query (polling/refetch-on-focus)                   |
+| Tests       | Vitest                                                      |
+| Tooling     | pnpm, Husky, commitlint, lint-staged, GitHub Actions        |
+| Deploy      | Vercel                                                      |
 
 ## Quick start
 

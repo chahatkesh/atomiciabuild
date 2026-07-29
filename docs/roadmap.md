@@ -6,7 +6,7 @@ Phased delivery for the Clinic Shift Scheduler take-home.
 
 - [x] Next.js 16 + TypeScript 6 + pnpm project
 - [x] Layered folder structure with barrels
-- [x] antd 6 shell (layout, theme, providers)
+- [x] antd 6 shell + Framer dark design system (layout, theme, providers)
 - [x] MongoDB connection + env validation
 - [x] Auth.js v5 credentials login
 - [x] Proxy route protection + server guards

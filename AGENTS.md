@@ -90,6 +90,8 @@ components/ → props from pages; never import *.model.ts or *.service.ts
 | `src/proxy.ts`               | Route protection proxy  |
 | `scripts/seed-users.ts`      | Seed logins             |
 | `docs/roadmap.md`            | Phase plan              |
+| `docs/design.md`             | Framer dark UI tokens   |
+| `src/theme/tokens.ts`        | Typed design tokens     |
 
 ## Do not
 

@@ -112,13 +112,13 @@ Architectural and product decisions for the Clinic Shift Scheduler, with rationa
 
 ---
 
-## 12. Ant Design 6
+## 12. Ant Design 6 + Framer dark design system
 
-**Decision:** antd 6 with CSS variables, `@ant-design/nextjs-registry` for SSR, ConfigProvider theme tokens.
+**Decision:** antd 6 with `@ant-design/nextjs-registry`, ConfigProvider `darkAlgorithm`, and a Framer-inspired token set (`docs/design.md` → `src/theme/tokens.ts` + CSS variables). Primary CTAs are white pills; `{colors.accent-blue}` is for links/focus only. Display type uses Geist Sans as the GT Walsheim substitute; body uses Inter with OpenType character variants.
 
-**Rationale:** Native React 19 support, mature component set for tables/forms/calendar layouts.
+**Rationale:** Keeps antd for tables/forms while matching the updated marketing-grade dark canvas. Tokens stay single-sourced so Phase 1–3 screens inherit the same surfaces, radii, and pill CTAs.
 
-**Tradeoff:** No dot-subcomponents in App Router — import subcomponents from explicit paths.
+**Tradeoff:** Requires CSS overrides for antd primary buttons (white-on-black, not blue fills). No light mode — dark is the brand.
 
 ---
 
