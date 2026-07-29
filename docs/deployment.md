@@ -2,66 +2,100 @@
 
 ## Target: Vercel + MongoDB Atlas
 
-### Vercel setup
+**Live project:** [chahat-kesharwanis-projects/atomiciabuild](https://vercel.com/chahat-kesharwanis-projects/atomiciabuild)  
+**GitHub repo:** [chahatkesh/atomiciabuild](https://github.com/chahatkesh/atomiciabuild)  
+**Production URL:** https://atomiciabuild.vercel.app
 
-1. Import GitHub repository
-2. Framework preset: **Next.js** (auto-detected)
-3. Install command: `pnpm install` (from `vercel.json`)
-4. Build command: `pnpm build`
+Local and production both use the same Atlas database (`atomiciabuild`).
 
-### Environment variables (Vercel dashboard)
+### One-time CLI setup (already done)
 
-| Variable          | Value                             |
-| ----------------- | --------------------------------- |
-| `MONGODB_URI`     | Atlas connection string (you add) |
-| `AUTH_SECRET`     | Random 32+ char secret            |
-| `AUTH_URL`        | `https://your-app.vercel.app`     |
-| `CLINIC_TIMEZONE` | `America/Toronto`                 |
-| `AUTH_TRUST_HOST` | `true`                            |
+```bash
+# Link local checkout
+vercel link --yes --project atomiciabuild --scope chahat-kesharwanis-projects
 
-### Atlas setup
+# Connect GitHub (comments / project link; auto Git deploys disabled — CD is Actions)
+vercel git connect https://github.com/chahatkesh/atomiciabuild.git
 
-1. Create free M0 cluster
-2. Database user with read/write on `clinic-scheduler` db
-3. Network access: allow `0.0.0.0/0` (or Vercel IP ranges for production hardening)
-4. Connection string → `MONGODB_URI`
+# Env vars (production / preview / development)
+vercel env add MONGODB_URI production,preview --sensitive
+vercel env add AUTH_SECRET production,preview --sensitive
+vercel env add MONGODB_URI development --no-sensitive
+vercel env add AUTH_SECRET development --no-sensitive
+vercel env add CLINIC_TIMEZONE production,preview,development --no-sensitive
+vercel env add AUTH_TRUST_HOST production,preview,development --no-sensitive
+vercel env add AUTH_URL production   # https://atomiciabuild.vercel.app
+```
+
+### GitHub Actions secrets (required for CD)
+
+| Secret              | Value                              |
+| ------------------- | ---------------------------------- |
+| `VERCEL_TOKEN`      | Vercel personal/CLI auth token     |
+| `VERCEL_ORG_ID`     | `team_3XkixXUIAAA1eJ7uEmvnuzHx`    |
+| `VERCEL_PROJECT_ID` | `prj_xos3OZ3vrMmK2fGXp9xu12A3FKni` |
+
+Set via:
+
+```bash
+gh secret set VERCEL_TOKEN -R chahatkesh/atomiciabuild
+gh secret set VERCEL_ORG_ID -R chahatkesh/atomiciabuild --body "team_3XkixXUIAAA1eJ7uEmvnuzHx"
+gh secret set VERCEL_PROJECT_ID -R chahatkesh/atomiciabuild --body "prj_xos3OZ3vrMmK2fGXp9xu12A3FKni"
+```
+
+### Environment variables
+
+| Variable          | Local (`.env.local`)    | Vercel                                    |
+| ----------------- | ----------------------- | ----------------------------------------- |
+| `MONGODB_URI`     | Atlas `atomiciabuild`   | Same Atlas URI (prod/preview/dev)         |
+| `AUTH_SECRET`     | Dev secret              | Dedicated secret (prod/preview/dev)       |
+| `AUTH_URL`        | `http://localhost:3000` | `https://atomiciabuild.vercel.app` (prod) |
+| `CLINIC_TIMEZONE` | `America/Toronto`       | `America/Toronto`                         |
+| `AUTH_TRUST_HOST` | `true`                  | `true`                                    |
+
+### Manual / CLI deploy
+
+```bash
+vercel --prod --scope chahat-kesharwanis-projects
+```
 
 ### Post-deploy seeding
 
-Run locally against Atlas URI:
-
 ```bash
-MONGODB_URI="mongodb+srv://..." pnpm seed:users
-# Phase 2: pnpm seed:import
+# Uses MONGODB_URI from .env.local (Atlas)
+pnpm seed:users
 ```
-
-Or add a one-time Vercel deploy hook / manual script run.
 
 ## CI/CD pipeline
 
+Deployments are driven entirely by GitHub Actions (`.github/workflows/ci.yml`).  
+`vercel.json` sets `"git": { "deploymentEnabled": false }` so Vercel does **not** also deploy on push (avoids double deploys).
+
 ```mermaid
 flowchart LR
-  Push["git push"] --> GHA["GitHub Actions"]
-  GHA --> Typecheck
-  GHA --> Lint
-  GHA --> Test
-  GHA --> Build
-  Push --> Vercel["Vercel deploy"]
-  GHA -.->|"must pass"| Vercel
+  Push["git push / PR"] --> GHA["GitHub Actions"]
+  GHA --> Quality["typecheck + lint + test + build"]
+  Quality -->|push to main| Prod["vercel pull → build --prod → deploy --prebuilt --prod"]
+  Prod --> Live["atomiciabuild.vercel.app"]
 ```
 
-`.github/workflows/ci.yml` runs on push/PR to `main`.
-
-Vercel Git integration deploys on push (configure to wait for CI if desired).
+| Stage         | Job                 | Trigger                           |
+| ------------- | ------------------- | --------------------------------- |
+| CI            | `quality`           | push / PR                         |
+| CD production | `deploy-production` | after `quality` on push to `main` |
 
 ## Local production parity
 
 ```bash
-docker compose up -d     # Mongo replica set
 cp .env.example .env.local
+# Set MONGODB_URI to the Atlas connection string
+pnpm install
+pnpm check:db
 pnpm seed:users
 pnpm build && pnpm start
 ```
+
+Docker Compose Mongo is optional now that local/prod share Atlas; keep it if you need an offline replica set.
 
 ## Cold starts & limits
 
@@ -72,17 +106,18 @@ pnpm build && pnpm start
 | M0 rate limit (~100 ops/sec)   | Heavy polling + concurrent claims may throttle |
 | M0 connection limit (500)      | Unlikely at demo scale; pool capped at 10      |
 
-Document in README if deployed URL experiences cold starts.
-
-## Monitoring (future)
+## Monitoring
 
 - `/api/health` for uptime checks
-- Vercel Analytics (optional)
+- Vercel dashboard deployment logs
+- GitHub Actions run logs for CI/CD
 - Structured logging via `lib/logger` (console for now)
 
 ## Security checklist
 
-- [ ] `AUTH_SECRET` is unique per environment
-- [ ] MongoDB user has minimal privileges
-- [ ] No secrets in git
-- [ ] HTTPS enforced (Vercel default)
+- [x] `AUTH_SECRET` set in Vercel (not committed)
+- [x] `MONGODB_URI` stored as sensitive on Production/Preview
+- [x] `VERCEL_TOKEN` / org / project IDs in GitHub Actions secrets
+- [x] No secrets in git (`.env.local` / `.vercel` gitignored)
+- [x] HTTPS enforced (Vercel default)
+- [ ] Rotate Atlas password if URI was shared in chat/docs

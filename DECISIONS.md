@@ -130,6 +130,26 @@ Architectural and product decisions for the Clinic Shift Scheduler, with rationa
 
 ---
 
+## 14. Shared Atlas DB for local + production
+
+**Decision:** Local `.env.local` and Vercel (prod/preview/dev) use the same MongoDB Atlas database (`atomiciabuild`). CI builds use a dummy URI (no live DB at build time).
+
+**Rationale:** Simplifies the take-home demo — one data set for reviewers, no Docker dependency for day-to-day work.
+
+**Tradeoff:** Local mutations affect production data. Acceptable for a demo; split databases before any shared staging with real users.
+
+---
+
+## 15. GitHub Actions owns CD (not Vercel Git auto-deploy)
+
+**Decision:** `.github/workflows/ci.yml` runs quality checks, then production-only `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod` on push to `main`. No preview deploy job. `vercel.json` sets `git.deploymentEnabled: false`.
+
+**Rationale:** Deploy only after typecheck/lint/test/build pass. Avoids double deploys and keeps CD simple for the take-home.
+
+**Tradeoff:** Requires `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` GitHub secrets.
+
+---
+
 ## One thing I'd do differently with more time
 
 **Add integration tests against a real MongoDB replica set** covering concurrent claim scenarios (two staff claiming the last nurse slot simultaneously, overlapping shift rejection under load). Unit tests cover time math today, but the highest-risk requirement is concurrent correctness — and that's best validated with parallel test workers hitting the same shift document.

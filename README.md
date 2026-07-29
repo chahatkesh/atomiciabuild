@@ -20,9 +20,9 @@ A fullstack clinic shift scheduling app built for the Atomica take-home brief. M
 
 ```bash
 cp .env.example .env.local
-# Edit MONGODB_URI and AUTH_SECRET
+# Set MONGODB_URI to the Atlas connection string (shared with production)
+# Set AUTH_SECRET (e.g. npx auth secret)
 
-docker compose up -d
 pnpm install
 pnpm check:db
 pnpm seed:users
@@ -30,6 +30,8 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+Optional: `docker compose up -d` if you prefer a local Mongo replica set instead of Atlas.
 
 ## Environment variables
 
@@ -72,9 +74,20 @@ pnpm test
 
 ## Deployment (Vercel)
 
-1. Connect the GitHub repo to Vercel.
-2. Set `MONGODB_URI`, `AUTH_SECRET`, `AUTH_URL`, `CLINIC_TIMEZONE` in project env.
-3. Push to `main` — CI runs on GitHub Actions; Vercel deploys on green.
+**Production:** https://atomiciabuild.vercel.app
+
+| Stage | What runs                                                         |
+| ----- | ----------------------------------------------------------------- |
+| CI    | GitHub Actions `quality` — typecheck, lint, test, build           |
+| CD    | Same workflow runs `deploy-production` after CI on push to `main` |
+
+Vercel Git auto-deploy is disabled (`git.deploymentEnabled: false`) so only Actions deploys. Requires repo secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+
+Local and production share the same MongoDB Atlas database (`atomiciabuild`). See [docs/deployment.md](./docs/deployment.md).
+
+```bash
+vercel --prod   # manual production deploy (optional)
+```
 
 **Cold starts:** Atlas M0 free clusters auto-pause after 30 days idle and may take a few seconds to wake. First request after pause can feel slow.
 
