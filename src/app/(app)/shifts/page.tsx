@@ -4,5 +4,5 @@ import { requireUserPage } from "@/modules/auth/server";
 export default async function ShiftsPage() {
   const user = await requireUserPage();
 
-  return <ShiftsManager canManage={user.role === "manager"} />;
+  return <ShiftsManager canManage={user.role === "manager"} profession={user.profession} />;
 }

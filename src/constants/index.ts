@@ -21,4 +21,13 @@ export const QUERY_KEYS = {
   myShifts: ["my-shifts"] as const,
   coverage: ["coverage"] as const,
   importRuns: ["import-runs"] as const,
+  importRun: ["import-run"] as const,
+  staffDirectory: ["staff-directory"] as const,
 } as const;
+
+/**
+ * Poll interval for shift data. The brief's "live updates" stretch goal is met
+ * by polling rather than sockets: it survives serverless cold starts and needs
+ * no extra infrastructure. See DECISIONS.md.
+ */
+export const LIVE_POLL_INTERVAL_MS = 15_000;

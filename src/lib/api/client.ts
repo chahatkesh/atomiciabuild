@@ -23,10 +23,13 @@ function isErrorBody(body: unknown): body is ApiErrorBody {
  * used by every route handler. Must not import server-only modules.
  */
 export async function apiFetch<T>(input: string, init?: RequestInit): Promise<T> {
+  // FormData must set its own Content-Type so the multipart boundary survives.
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
+
   const response = await fetch(input, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...init?.headers,
     },
   });

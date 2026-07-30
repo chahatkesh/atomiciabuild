@@ -2,8 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { QUERY_KEYS } from "@/constants";
+import { LIVE_POLL_INTERVAL_MS, QUERY_KEYS } from "@/constants";
 import { apiFetch } from "@/lib/api/client";
+import type { ReleasedClaimSummary, ShiftListItem } from "@/modules/claims/types";
 import type { CreateShiftPayload, ShiftRecord, UpdateShiftPayload } from "@/modules/shifts/types";
 
 export interface UseShiftsParams {
@@ -27,7 +28,10 @@ function buildShiftsUrl(params: UseShiftsParams): string {
 export function useShifts(params: UseShiftsParams = {}) {
   return useQuery({
     queryKey: [...QUERY_KEYS.shifts, params],
-    queryFn: () => apiFetch<ShiftRecord[]>(buildShiftsUrl(params)),
+    queryFn: () => apiFetch<ShiftListItem[]>(buildShiftsUrl(params)),
+    // Someone else claiming the last slot should show up without a refresh.
+    refetchInterval: LIVE_POLL_INTERVAL_MS,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -44,16 +48,18 @@ export function useCreateShift() {
   });
 }
 
+export type UpdateShiftResponse = ShiftRecord & { releasedClaims: ReleasedClaimSummary[] };
+
 export function useUpdateShift() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateShiftPayload }) =>
-      apiFetch<ShiftRecord>(`/api/shifts/${id}`, {
+      apiFetch<UpdateShiftResponse>(`/api/shifts/${id}`, {
         method: "PATCH",
         body: JSON.stringify(payload),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.shifts }),
+    onSuccess: () => invalidateShiftViews(queryClient),
   });
 }
 
@@ -62,9 +68,18 @@ export function useDeleteShift() {
 
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch<{ id: string; deleted: boolean }>(`/api/shifts/${id}`, {
+      apiFetch<{ id: string; deleted: boolean; releasedClaims: number }>(`/api/shifts/${id}`, {
         method: "DELETE",
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.shifts }),
+    onSuccess: () => invalidateShiftViews(queryClient),
   });
+}
+
+/** An edit can release claims, so the staff-facing views must refresh too. */
+function invalidateShiftViews(queryClient: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.shifts }),
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.myShifts }),
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.coverage }),
+  ]);
 }
