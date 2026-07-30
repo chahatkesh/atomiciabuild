@@ -18,6 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:db": "tsx --env-file-if-exists=.env.local scripts/check-db.ts",
+    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
+    "seed:reset": "tsx --env-file-if-exists=.env.local scripts/seed.ts --reset",
     "seed:users": "tsx --env-file-if-exists=.env.local scripts/seed-users.ts",
     "prepare": "husky"
   },
