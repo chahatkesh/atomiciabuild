@@ -7,7 +7,7 @@ import {
   ReloadOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
-import { App, Button, Card, Empty, Space, Table, Tooltip } from "antd";
+import { Alert, App, Button, Card, Empty, Space, Table, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
@@ -190,10 +190,7 @@ export function ShiftsManager({ canManage, profession }: ShiftsManagerProps) {
       dataIndex: "date",
       key: "date",
       render: (date: string) => (
-        <span>
-          <div style={{ color: colors.ink }}>{dayjs(date).format("ddd, MMM D")}</div>
-          <div className="type-caption">{date}</div>
-        </span>
+        <span style={{ color: colors.ink }}>{dayjs(date).format("ddd, MMM D, YYYY")}</span>
       ),
       sorter: (a, b) => a.startAt.localeCompare(b.startAt),
       defaultSortOrder: "ascend",
@@ -299,7 +296,7 @@ export function ShiftsManager({ canManage, profession }: ShiftsManagerProps) {
 
   return (
     <Card
-      title="All shifts"
+      title={`All shifts${shifts.length > 0 ? ` (${shifts.length})` : ""}`}
       extra={
         <Space>
           <Button
@@ -318,7 +315,17 @@ export function ShiftsManager({ canManage, profession }: ShiftsManagerProps) {
       }
     >
       {shiftsQuery.isError ? (
-        <Empty description={errorMessageFrom(shiftsQuery.error)} />
+        <Alert
+          type="error"
+          showIcon
+          title="Could not load shifts"
+          description={errorMessageFrom(shiftsQuery.error)}
+          action={
+            <Button size="small" onClick={() => shiftsQuery.refetch()}>
+              Retry
+            </Button>
+          }
+        />
       ) : (
         <Table<ShiftListItem>
           rowKey="id"

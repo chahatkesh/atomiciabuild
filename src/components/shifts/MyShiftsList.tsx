@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarOutlined, ReloadOutlined } from "@ant-design/icons";
-import { App, Button, Card, Empty, Skeleton, Space, Tag } from "antd";
+import { Alert, App, Button, Card, Empty, Skeleton, Space, Tag } from "antd";
 import dayjs from "dayjs";
 
 import { StaffingStatusTag } from "@/components/shifts/ShiftTags";
@@ -115,7 +115,7 @@ export function MyShiftsList() {
   return (
     <Space orientation="vertical" size="large" style={{ width: "100%" }}>
       <Card
-        title={`My shifts${upcoming.length > 0 ? ` (${upcoming.length} upcoming)` : ""}`}
+        title={`Upcoming${upcoming.length > 0 ? ` (${upcoming.length})` : ""}`}
         extra={
           <Button
             type="text"
@@ -127,7 +127,17 @@ export function MyShiftsList() {
         }
       >
         {myShifts.isError ? (
-          <Empty description={errorMessageFrom(myShifts.error)} />
+          <Alert
+            type="error"
+            showIcon
+            title="Could not load your shifts"
+            description={errorMessageFrom(myShifts.error)}
+            action={
+              <Button size="small" onClick={() => myShifts.refetch()}>
+                Retry
+              </Button>
+            }
+          />
         ) : myShifts.isLoading ? (
           <Skeleton active paragraph={{ rows: 3 }} />
         ) : (

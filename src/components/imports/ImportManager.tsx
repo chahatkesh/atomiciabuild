@@ -18,6 +18,11 @@ function errorMessageFrom(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+/** A 404 on the report means nobody has imported yet — not a failure. */
+function isNoRunsYet(error: unknown): boolean {
+  return error instanceof ApiRequestError && error.status === 404;
+}
+
 export function ImportManager() {
   const { message } = App.useApp();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -143,8 +148,20 @@ export function ImportManager() {
           <div style={{ padding: spacing.xl, textAlign: "center" }}>
             <Spin />
           </div>
-        ) : run.isError ? (
+        ) : run.isError && isNoRunsYet(run.error) ? (
           <Empty description="No import has been run yet. Upload a CSV above to get started." />
+        ) : run.isError ? (
+          <Alert
+            type="error"
+            showIcon
+            title="Could not load the import report"
+            description={errorMessageFrom(run.error)}
+            action={
+              <Button size="small" onClick={() => run.refetch()}>
+                Retry
+              </Button>
+            }
+          />
         ) : (
           <Space orientation="vertical" size="large" style={{ width: "100%" }}>
             <Typography.Text className="type-caption">
