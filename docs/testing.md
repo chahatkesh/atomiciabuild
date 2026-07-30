@@ -15,16 +15,22 @@ Setup: `tests/setup.ts` (fallback env vars when no `.env.local` exists).
 
 ## Coverage
 
-**79 tests across 6 files.**
+**113 tests across 8 files.**
 
 | File                                  | What it covers                                                                                              |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `tests/unit/clinic-time.test.ts`      | Date parsing (ISO, dd/MM, MM-dd), `+1` times, overnight windows, overlap detection                          |
+| `tests/unit/clinic-time.test.ts`      | Date parsing (ISO, dd/MM, MM-dd), `+1` times, overnight windows, overlap detection, Monday week bounds      |
+| `tests/unit/shift-window.test.ts`     | Midnight-crossing detection and window display, including viewer-timezone independence                      |
 | `tests/unit/shift-rules.test.ts`      | Requirement parsing, duration bounds, staffing status, capacity maths                                       |
+| `tests/unit/coverage-rules.test.ts`   | Week grid always 7 days, start-date grouping, per-day and week roll-ups, worst-status, clamped totals       |
 | `tests/unit/staff-normalizer.test.ts` | Role aliases, `(at)` email repair, rejection of unknown roles and missing identity fields                   |
 | `tests/unit/shift-normalizer.test.ts` | Date convention inference, overnight/midnight/`+1` handling, free-text requirements, every rejection reason |
 | `tests/integration/claims.test.ts`    | Concurrency, overlap, capacity, release/re-claim, edit revalidation, delete cascade                         |
 | `tests/integration/import.test.ts`    | Merge policy, duplicate identity handling, imported logins, idempotency, row reports                        |
+
+Coverage aggregation is tested as a **unit** suite, not an integration one:
+`buildWeekCoverage()` is pure (DECISIONS.md §30), so week bounds, overnight-shift
+day assignment and roll-up arithmetic can be asserted without a database.
 
 ## Integration tests
 
@@ -63,7 +69,7 @@ Covered races:
 - 12 claimants, 3 slots → exactly 3 winners
 - One person submitting two overlapping claims simultaneously → exactly 1 accepted
 
-That last case is the write-skew scenario described in DECISIONS.md §17, and it
+That last case is the write-skew scenario described in DECISIONS.md §19, and it
 fails without the per-user conflict point.
 
 ## Unit test guidelines
@@ -71,6 +77,10 @@ fails without the per-user conflict point.
 - Pure functions in `*.rules.ts` and `*.normalizer.ts` — no DB, no mocks
 - Time tests use a fixed `CLINIC_TIMEZONE=America/Toronto`
 - Normalizer tests use real rows from `docs/problem-statement/*.csv`
+- Anything that renders a time must pass under a **non-clinic** timezone too.
+  `TZ=Asia/Kolkata pnpm test` is green, and that is not incidental: display code
+  comparing UTC instants in the viewer's timezone is how the false "(+1)" in
+  DECISIONS.md §30 got in.
 
 ## CI
 
@@ -85,4 +95,5 @@ full suite in CI, add a replica-set service and set `MONGODB_URI_TEST`.
 | Claim      | Capacity rejection, overlap rejection, concurrent last slot |
 | Import     | Each dirty row category from import-pipeline.md             |
 | Shift edit | Claim release on time change and on shrinking requirements  |
+| Coverage   | Week bounds, overnight day assignment, missing-role roll-up |
 | Auth       | Role guard returns 403                                      |

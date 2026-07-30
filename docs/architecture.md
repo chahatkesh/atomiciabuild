@@ -46,15 +46,15 @@ src/
 │   └── api/
 ├── components/             # Presentational UI (no domain imports)
 ├── constants/              # App-wide constants
-├── hooks/                  # Client hooks (realtime port, polling)
+├── hooks/                  # Client hooks (queries, realtime port, polling)
 ├── lib/                    # Infrastructure (db, env, errors, time)
 ├── modules/                # Domain logic
 │   ├── auth/               # client.ts + server.ts split
 │   ├── users/
 │   ├── shifts/
 │   ├── claims/
-│   ├── import/
-│   └── coverage/
+│   ├── imports/
+│   └── coverage/           # rules (pure) + service (reads shifts & claims)
 ├── providers/              # React context providers
 └── types/                  # Shared TypeScript types
 ```
@@ -91,16 +91,28 @@ src/
 - **Transactions:** Required for claims; probed at `/api/health` and `pnpm check:db`
 - **Cold starts:** Atlas M0 pause + Vercel function cold start may add latency on first request
 
-## Module boundaries (Phase plan)
+## Module boundaries
 
-| Module     | Responsibility                  | Phase |
-| ---------- | ------------------------------- | ----- |
-| `auth`     | Login, session, guards          | 0 ✓   |
-| `users`    | Staff/manager accounts          | 0 ✓   |
-| `shifts`   | CRUD, time normalization        | 1     |
-| `claims`   | Claim/unclaim, overlap/capacity | 2     |
-| `import`   | CSV parse, merge, report        | 2     |
-| `coverage` | Week-at-a-glance dashboard      | 3     |
+| Module     | Responsibility                           | Phase |
+| ---------- | ---------------------------------------- | ----- |
+| `auth`     | Login, session, guards                   | 0 ✓   |
+| `users`    | Staff/manager accounts                   | 0 ✓   |
+| `shifts`   | CRUD, time normalization                 | 1 ✓   |
+| `claims`   | Claim/unclaim, overlap/capacity          | 2 ✓   |
+| `imports`  | CSV parse, merge, report                 | 2 ✓   |
+| `coverage` | Week-at-a-glance aggregation (read-only) | 3 ✓   |
+
+`coverage` is the only module that reads from two others (`shifts` and `claims`)
+and writes to none. It composes their records rather than querying their
+collections directly, so staffing status is computed in exactly one place
+(`shift.rules`) no matter which view asks for it.
+
+### Where the cycles were
+
+`shift.service` needed to release claims after an edit, and `claim.service`
+needed to serialize a shift for its response — a cycle. `shift.serializer.ts`
+holds `toShiftRecord()` on its own so both can import it. Read-only `coverage`
+sits above both and introduces no new edges.
 
 ## ESLint enforcement
 

@@ -198,6 +198,13 @@ Body type is **Inter Variable**, with Framer leaning hard into Inter's character
 ### Semantic
 
 - **Success Green** ({colors.semantic-success}): Pricing comparison-table checkmarks. Glyph fill, not surface.
+- **Warning Amber** ({colors.semantic-warning}): App addition — "partially staffed" and missing-role chips. Not in the source marketing spec.
+- **Danger Red** ({colors.semantic-danger}): App addition — "empty" staffing status and rejected import rows. Not in the source marketing spec.
+
+The scheduler needs a three-state staffing signal (covered / short / empty), and
+the marketing spec only documents a success green. Amber and red are added at the
+same saturation so the three read as one scale. They stay glyph, chip, and
+1px-stripe fills — never a card surface, which would fight the dark canvas.
 
 ### Brand Gradient (signature)
 
@@ -359,6 +366,20 @@ Framer's extracted radius set is unusually granular (1px, 4px, 5px, 6px, 8px, 10
 
 - Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.body-sm}`, rounded `{rounded.xl}`, padding 16px.
 
+**`coverage-day-column`** — App addition. One day of the week grid on the dashboard.
+
+- Background `{colors.surface-1}`, rounded `{rounded.md}`, padding `{spacing.sm}`, 1px `{colors.hairline-soft}` border. Header row (weekday + date) sits above a hairline rule.
+- Today's column swaps its border to `{colors.accent-blue}` with `{elevation.selected}` — the one place accent blue is used as an outline rather than a link colour, consistent with treating it as a single-shot signal.
+- Past days drop to 55% opacity rather than changing colour, so the week's "you are here" reads without adding a second hue.
+
+**`coverage-shift-card`** — App addition. One shift inside a day column.
+
+- Background `{colors.surface-2}` (one surface step up from its parent column), rounded `{rounded.sm}`, padding `{spacing.xs}`.
+- A 3px left border carries staffing status: `{colors.semantic-success}` / `{colors.semantic-warning}` / `{colors.semantic-danger}`. A stripe rather than a filled card keeps the grid monochrome at a glance and lets the eye find red edges by scanning.
+- Time range uses tabular numerals so windows align vertically down a column.
+- Missing roles render as compact pill chips (11px, single-letter role) because an antd `Tag` is too padded to fit three across a 150px column.
+- The whole card is a `button`, focusable, with an `aria-label` that spells out date, window, status, and the filled/required counts per role — the chips are shorthand, the label is not.
+
 ### Gradient Spotlight Cards (signature)
 
 The defining decorative surface of Framer's marketing — oversized atmospheric tiles dropped into otherwise monochrome card grids. Variants:
@@ -444,6 +465,7 @@ The defining decorative surface of Framer's marketing — oversized atmospheric 
 
 - **Nav**: horizontal nav with a centered link group + right-anchored pill pair collapses to a hamburger overlay below 810px. The `button-primary` stays visible on the bar.
 - **Card grids**: the gallery and template-card grids go 2-up on desktop → 1-up on mobile. Gradient spotlight cards retain `{rounded.xxl}` corners at every viewport — they don't bleed.
+- **Coverage week grid** (app-specific, `src/components/coverage/coverage.module.css`): 7 columns ≥1280px → 4 ≥900px → 2 ≥560px → 1 below. Mobile-first, so the single-column stack is the base rule and each breakpoint adds columns. The grid never scrolls horizontally: a day column stops narrowing at roughly 150px and the week wraps instead. Day columns are always rendered, including empty ones, so the shape of the week stays readable at every width.
 - **Pricing comparison table**: collapses into per-tier accordions below 810px to avoid horizontal scroll.
 - **Display type**: `{typography.display-xxl}` 110px scales down toward `{typography.display-lg}` 62px on tablet and `{typography.display-md}` 32px on mobile, preserving the percentage-negative letter-spacing.
 

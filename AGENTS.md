@@ -81,17 +81,20 @@ components/ → props from pages; never import *.model.ts or *.service.ts
 
 ## Key files
 
-| Path                         | Purpose                 |
-| ---------------------------- | ----------------------- |
-| `src/lib/config/env.ts`      | Zod-validated env       |
-| `src/lib/db/connect.ts`      | Mongoose singleton      |
-| `src/lib/time/clinic.ts`     | Timezone + overlap math |
-| `src/modules/auth/server.ts` | Auth entry (server)     |
-| `src/proxy.ts`               | Route protection proxy  |
-| `scripts/seed-users.ts`      | Seed logins             |
-| `docs/roadmap.md`            | Phase plan              |
-| `docs/design.md`             | Framer dark UI tokens   |
-| `src/theme/tokens.ts`        | Typed design tokens     |
+| Path                                     | Purpose                              |
+| ---------------------------------------- | ------------------------------------ |
+| `src/lib/config/env.ts`                  | Zod-validated env                    |
+| `src/lib/db/connect.ts`                  | Mongoose singleton                   |
+| `src/lib/time/clinic.ts`                 | Timezone, overlap math, week bounds  |
+| `src/modules/auth/server.ts`             | Auth entry (server)                  |
+| `src/modules/shifts/shift.rules.ts`      | Staffing status, capacity, durations |
+| `src/modules/claims/claim.service.ts`    | Transactional claim/release          |
+| `src/modules/coverage/coverage.rules.ts` | Pure week aggregation                |
+| `src/proxy.ts`                           | Route protection proxy               |
+| `scripts/seed.ts`                        | Seed manager + import both CSVs      |
+| `docs/roadmap.md`                        | Phase plan + verification results    |
+| `docs/design.md`                         | Framer dark UI tokens                |
+| `src/theme/tokens.ts`                    | Typed design tokens                  |
 
 ## Do not
 
@@ -99,3 +102,5 @@ components/ → props from pages; never import *.model.ts or *.service.ts
 - Put mongoose in client bundles
 - Skip transaction retry for claim mutations
 - Trust client-only validation for business rules
+- Recompute staffing status in a view — call `shift.rules`
+- Use deprecated antd 6 props (`Alert message`, `Space direction`, `Progress trailColor`, `Statistic valueStyle`, `List`); the console should stay clean

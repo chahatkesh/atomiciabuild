@@ -150,7 +150,7 @@ Architectural and product decisions for the Clinic Shift Scheduler, with rationa
 
 ---
 
-## 14. Shift duration bounds (30 minutes to 16 hours)
+## 16. Shift duration bounds (30 minutes to 16 hours)
 
 **Decision:** Reject shifts shorter than 30 minutes or longer than 16 hours.
 
@@ -165,7 +165,7 @@ bound lives in one constant (`MAX_SHIFT_MINUTES`) for that reason.
 
 ---
 
-## 15. Unique natural key on (date, startAt, endAt)
+## 17. Unique natural key on (date, startAt, endAt)
 
 **Decision:** A unique compound index enforces one shift per clinic time window.
 
@@ -179,7 +179,7 @@ requirements. Given the coverage dashboard is per-window, that is the better fit
 
 ---
 
-## 16. API routes excluded from the proxy matcher
+## 18. API routes excluded from the proxy matcher
 
 **Decision:** `src/proxy.ts` matches page routes only; `/api/*` is excluded.
 
@@ -192,7 +192,7 @@ redirect, never the security boundary.
 
 ---
 
-## 17. Concurrency: guarded counters plus a per-user conflict point
+## 19. Concurrency: guarded counters plus a per-user conflict point
 
 **Decision:** Claiming runs in a transaction that (a) bumps the claimant's own
 user document, (b) increments the shift's filled counter with a conditional
@@ -225,7 +225,7 @@ at the same instant and asserts one is refused.
 
 ---
 
-## 18. Editing a claimed shift releases only what actually broke
+## 20. Editing a claimed shift releases only what actually broke
 
 **Decision:** After a manager edits a shift, every claim on it is re-checked
 against the new shape. Claims that still satisfy capacity and overlap are kept;
@@ -244,7 +244,7 @@ closing section.
 
 ---
 
-## 19. Conflicting import rows merge by taking the higher count
+## 21. Conflicting import rows merge by taking the higher count
 
 **Decision:** Rows sharing `(date, startAt, endAt)` collapse into one shift
 whose requirement per profession is the maximum across the rows, keeping every
@@ -262,7 +262,7 @@ silent.
 
 ---
 
-## 20. Date formats are disambiguated by separator
+## 22. Date formats are disambiguated by separator
 
 **Decision:** `YYYY-MM-DD` is ISO, `DD/MM/YYYY` for slashes, `MM-DD-YYYY` for
 dashes. Every non-ISO reading is reported on the row.
@@ -278,7 +278,7 @@ wrong. The report is the mitigation.
 
 ---
 
-## 21. Imported staff share a documented password
+## 23. Imported staff share a documented password
 
 **Decision:** Accounts created by the importer get the same password as the
 seeded logins, applied with `$setOnInsert` so re-imports never overwrite one.
@@ -293,7 +293,7 @@ env var.
 
 ---
 
-## 22. Live updates by polling
+## 24. Live updates by polling
 
 **Decision:** Shift views refetch every 15 seconds and on window focus.
 
@@ -304,6 +304,131 @@ be swapped for SSE or Pusher without touching the views.
 
 **Tradeoff:** Up to 15 seconds stale, and a request per client per interval. A
 socket would be better with more users.
+
+---
+
+## 25. Weeks run Monday to Sunday, and the server decides
+
+**Decision:** A week is Monday–Sunday. `GET /api/coverage?weekStart=` accepts
+_any_ date in the wanted week and snaps it to that week's Monday server-side.
+
+**Rationale:** Two things had to agree on where a week begins — the grid and the
+query — and putting that rule in one place on the server means they cannot drift.
+It also makes the endpoint forgiving: the date picker can hand over whatever the
+user clicked. Monday-first matches how a clinic rota reads and the brief's own
+"every Mon/Wed" example.
+
+**Tradeoff:** A clinic that runs Sunday-first weeks needs a config value. The
+rule is one function (`startOfClinicWeek`), so that is a small change.
+
+---
+
+## 26. Jump-to-week is a date picker, not a week picker
+
+**Decision:** The "jump to any week" control is an ordinary date picker; whatever
+date is chosen, the week containing it is shown.
+
+**Rationale:** antd's `picker="week"` labels weeks by ISO number ("2026-32nd"),
+and its week boundaries follow the antd locale rather than decision 25 — so it
+could highlight a different week than the one rendered. Nobody thinks in week
+numbers anyway; they think "the week of the 10th". Picking a date has no such
+mismatch and needs no locale configuration.
+
+**Tradeoff:** One extra click to see which dates a week covers. The heading
+("3 – 9 Aug 2026") answers that immediately.
+
+---
+
+## 27. A day's status is its worst shift
+
+**Decision:** Each day column shows one status dot: red if any shift on it is
+empty, amber if any is partially staffed, green only if all are covered. Per-shift
+status stays visible as a coloured stripe on each card.
+
+**Rationale:** The dashboard exists to make gaps findable. Averaging would hide
+the one empty night shift behind three full day shifts, which is precisely the
+thing a manager is scanning for. Pessimistic roll-up means a green day is
+trustworthy.
+
+**Tradeoff:** A day that is 90% staffed looks as alarming as an empty one at the
+day level. The per-shift stripes and the "N slots open" count give the detail,
+so the dot is a "look here" signal rather than a score.
+
+---
+
+## 28. Coverage is readable by staff, not managers only
+
+**Decision:** `GET /api/coverage` and `/dashboard` require a signed-in user, not
+a manager. The page reframes itself for staff ("Where you're needed"), while all
+management actions stay manager-only.
+
+**Rationale:** The brief calls this a manager view, and for managers it is. But
+the dashboard is the app's landing page for both roles, and a staff member seeing
+which shifts are short is exactly what prompts them to claim one — the shortage
+information is the same information the Shifts page already shows them. Hiding it
+would cost a real workflow to protect nothing.
+
+**Tradeoff:** Staff can see clinic-wide staffing levels. If that were sensitive,
+the fix is a narrowed response (counts without rosters) rather than a blanket 403.
+
+---
+
+## 29. Empty weeks offer a way out
+
+**Decision:** The coverage response carries `dataRange` (first and last scheduled
+date). When a week has no shifts, the page says where the roster actually starts
+and offers one click to that week.
+
+**Rationale:** The imported roster covers August 2026, so anyone opening the
+dashboard before then lands on a legitimately empty week. Without this, the first
+impression of the feature is a blank grid that looks broken. Two extra indexed
+queries turn a dead end into a signpost.
+
+**Tradeoff:** Two more queries per request. They hit the existing `date` index and
+sort-limit to one document each, so the cost is negligible.
+
+---
+
+## 30. Shift windows are formatted from clinic-local strings, not instants
+
+**Decision:** `formatShiftWindow()` decides whether a shift crosses midnight
+from the stored `startTime`/`endTime` strings, and never from `startAt`/`endAt`.
+
+**Rationale:** Building the coverage cards needed a third copy of this
+formatter, so I extracted the two that already existed — and the extracted
+version had a bug. It compared the UTC instants with `dayjs(...).isSame(day)`,
+which resolves in the **browser's** timezone. Viewed from UTC+5:30, a 14:00–22:00
+Toronto shift becomes 23:30–07:30 and picks up a "(+1)" it should never have; the
+same shift looks correct to a viewer in Toronto. The clinic-local strings carry no
+timezone, so comparing those is right for every viewer.
+
+A shift crosses midnight when its end carries a later `+1` day marker than its
+start, or when both sit on the same day and the end time is at or before the start
+time (which is exactly the condition that made `buildShiftWindow` roll the window
+forward in the first place).
+
+**Tradeoff:** The formatter now trusts that `endTime <= startTime` always means a
+rolled window. That is guaranteed by `buildShiftWindow`, and the unique natural
+key (decision 17) means no shift can exist that violates it.
+`tests/unit/shift-window.test.ts` pins the behaviour, and the full suite passes
+under `TZ=Asia/Kolkata` as well as the clinic timezone.
+
+---
+
+## 31. Coverage aggregation is a pure function
+
+**Decision:** `coverage.rules.ts` holds the grouping and roll-up logic as a pure
+function; `coverage.service.ts` does the database reads and calls it. Component
+styling for the grid lives in a CSS module rather than inline styles.
+
+**Rationale:** The aggregation is where the interesting rules are — day
+assignment for overnight shifts, worst-status roll-up, clamped totals — and all
+of it is testable without a database. That is why the coverage tests run as unit
+tests instead of integration tests. The CSS module is there because the responsive
+column counts need media queries, which inline styles cannot express.
+
+**Tradeoff:** One more file per concern, and one styling approach (CSS modules)
+that the rest of the app does not yet use.
 
 ---
 

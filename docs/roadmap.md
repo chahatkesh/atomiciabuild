@@ -87,16 +87,49 @@ Business rules verified end-to-end:
 | Shift deleted                                | claims released                       |
 | Re-import                                    | idempotent; never lowers requirements |
 
-## Phase 3 — Coverage dashboard
+## Phase 3 — Coverage dashboard ✓
 
-- [ ] `coverageService.getWeekCoverage()`
-- [ ] `GET /api/coverage?weekStart=`
-- [ ] Responsive week-at-a-glance grid
-- [ ] Staffing status badges + missing role tags
-- [ ] Week navigation (prev/next/jump)
-- [ ] TanStack Query polling for live-ish updates
+- [x] Monday-based week helpers in `lib/time/clinic` (`startOfClinicWeek`, `clinicWeekDates`)
+- [x] `coverage.rules.ts` — pure per-day/per-week aggregation
+- [x] `coverage.service.ts` — `getWeekCoverage()` over shifts + claims
+- [x] `GET /api/coverage?weekStart=` with query validation
+- [x] Responsive week-at-a-glance grid (7 → 4 → 2 → 1 columns)
+- [x] Per-shift status stripe + missing-role chips; per-day worst-status dot
+- [x] Week summary stats + coverage progress bar
+- [x] Week navigation: prev / next / this week / jump to any date
+- [x] Shift detail modal with roster, requirements, and what is missing
+- [x] `dataRange` empty state — one click to a week that has shifts
+- [x] TanStack Query polling (15s) + refetch on focus, previous week kept while loading
+- [x] Unit tests for week bounds and coverage aggregation
 
-**Exit criteria:** Manager sees week coverage with missing roles; responsive on mobile.
+**Exit criteria met.** Verified against MongoDB Atlas (85 imported shifts, one
+claim per week held by a staff account):
+
+| Week (Mon–Sun)  | Shifts | Full | Partial | Empty | Slots | Free days |
+| --------------- | ------ | ---- | ------- | ----- | ----- | --------- |
+| Jul 27 – Aug 2  | 0      | 0    | 0       | 0     | 0/0   | 7         |
+| Aug 3 – Aug 9   | 23     | 0    | 4       | 19    | 4/75  | 0         |
+| Aug 10 – Aug 16 | 20     | 0    | 0       | 20    | 0/80  | 0         |
+| Aug 17 – Aug 23 | 19     | 0    | 0       | 19    | 0/82  | 0         |
+| Aug 24 – Aug 30 | 23     | 0    | 0       | 23    | 0/85  | 0         |
+| Aug 31 – Sep 6  | 0      | 0    | 0       | 0     | 0/0   | 7         |
+
+23 + 20 + 19 + 23 = **85**, matching the shift count in the database: every shift
+lands in exactly one week, with no double-counting across week boundaries.
+
+Behaviour verified:
+
+| Check                                    | Result                                     |
+| ---------------------------------------- | ------------------------------------------ |
+| `weekStart` mid-week (`2026-08-27`)      | snaps to Monday `2026-08-24`               |
+| `weekStart` on a Sunday (`2026-08-09`)   | resolves to the week starting `2026-08-03` |
+| `weekStart` omitted                      | week containing clinic-local today         |
+| `weekStart=nope`                         | 400 `BAD_REQUEST`                          |
+| Week with no shifts                      | 7 empty day columns + jump-to-data prompt  |
+| Overnight shift (16:00–00:00)            | listed on its start date only              |
+| Day with one partial and one empty shift | day dot shows the worse status (empty)     |
+| Staff account reading `/api/coverage`    | 200 (dashboard serves both roles)          |
+| Claim made on Shifts page                | dashboard reflects it within one poll      |
 
 ## Stretch goals
 
@@ -107,12 +140,12 @@ Business rules verified end-to-end:
 
 ## Estimated effort
 
-| Phase   | Estimate   |
-| ------- | ---------- |
-| 0       | 1 day ✓    |
-| 1       | 0.5–1 day  |
-| 2       | 1.5–2 days |
-| 3       | 0.5–1 day  |
-| Stretch | 1+ day     |
+| Phase   | Estimate     |
+| ------- | ------------ |
+| 0       | 1 day ✓      |
+| 1       | 0.5–1 day ✓  |
+| 2       | 1.5–2 days ✓ |
+| 3       | 0.5–1 day ✓  |
+| Stretch | 1+ day       |
 
 Total: ~4 days (matches brief timeline).

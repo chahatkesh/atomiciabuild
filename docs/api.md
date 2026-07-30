@@ -113,7 +113,7 @@ or `404`.
 
 ---
 
-## Phase 2 — Claims
+## Phase 2 — Claims (implemented)
 
 ### `POST /api/shifts/:shiftId/claim`
 
@@ -145,7 +145,7 @@ Staff directory for the assignment picker. **Manager only.**
 
 ---
 
-## Phase 2 — Import
+## Phase 2 — Import (implemented)
 
 ### `POST /api/import`
 
@@ -170,73 +170,74 @@ One run with every row report. `latest` returns the most recent. **Manager only.
 
 ---
 
-## Phase 2 — Claims
-
-### `POST /api/shifts/:id/claims`
-
-Claim shift (self or manager assign).
-
-**Body:** `{ "staffId"?: string }` — omit for self-claim.
-
-**Errors:**
-
-- `409` — profession full
-- `409` — overlaps existing claim
-
-### `DELETE /api/shifts/:id/claims/:staffId`
-
-Unclaim. Self or manager.
-
----
-
-## Phase 2 — Import
-
-### `POST /api/import`
-
-Manager only. Multipart CSV upload.
-
-**Body:** `staff` file, `shifts` file (one or both).
-
-**Response:** Import run report.
-
-### `GET /api/import/runs`
-
-List import runs. Manager only.
-
-### `GET /api/import/runs/:id`
-
-Single run with full row report.
-
----
-
-## Phase 3 — Coverage
+## Phase 3 — Coverage (implemented)
 
 ### `GET /api/coverage?weekStart=YYYY-MM-DD`
 
-Week-at-a-glance staffing summary.
+Week-at-a-glance staffing summary. Readable by **any signed-in user** — the
+dashboard is the landing page for both roles, and staff seeing which shifts are
+short is what prompts them to claim one.
 
-**Response:**
+`weekStart` is optional and may be **any date in the wanted week**; the server
+snaps it to that week's Monday, so the client never has to agree on where a week
+begins. Omitted means the week containing today (clinic-local).
+
+- `400 BAD_REQUEST` — `weekStart` is not `YYYY-MM-DD`
+
+**Response** (abbreviated — `days` always has exactly 7 entries, in order):
 
 ```json
 {
   "data": {
     "weekStart": "2026-08-03",
     "weekEnd": "2026-08-09",
-    "shifts": [
+    "today": "2026-07-30",
+    "dataRange": { "firstDate": "2026-08-03", "lastDate": "2026-08-30" },
+    "totals": {
+      "shifts": 23,
+      "fullyStaffed": 0,
+      "partiallyStaffed": 6,
+      "empty": 17,
+      "missing": { "doctor": 22, "nurse": 53, "receptionist": 10 },
+      "required": 85,
+      "filled": 5
+    },
+    "days": [
       {
-        "shiftId": "...",
-        "date": "2026-08-05",
-        "startTime": "09:00",
-        "endTime": "17:00",
-        "status": "partially_staffed",
-        "requirements": { "doctor": 1, "nurse": 2, "receptionist": 1 },
-        "filled": { "doctor": 1, "nurse": 1, "receptionist": 0 },
-        "missing": { "doctor": 0, "nurse": 1, "receptionist": 1 }
+        "date": "2026-08-03",
+        "status": "empty",
+        "totals": { "shifts": 2, "...": "same shape as week totals" },
+        "shifts": [
+          {
+            "id": "...",
+            "date": "2026-08-03",
+            "startTime": "16:00",
+            "endTime": "00:00",
+            "startAt": "2026-08-03T20:00:00.000Z",
+            "endAt": "2026-08-04T04:00:00.000Z",
+            "status": "partially_staffed",
+            "requirements": { "doctor": 2, "nurse": 3, "receptionist": 1 },
+            "filled": { "doctor": 0, "nurse": 0, "receptionist": 1 },
+            "missing": { "doctor": 2, "nurse": 3, "receptionist": 0 },
+            "claims": [{ "userName": "Anya Sharma", "profession": "receptionist" }]
+          }
+        ]
       }
     ]
   }
 }
 ```
+
+Notes on the shape:
+
+- A shift appears on its **start date**, so an overnight shift shows on the day
+  it begins.
+- `days[].status` is the **worst** status among that day's shifts, and is `null`
+  for a day with no shifts.
+- `totals.filled` is clamped to `totals.required` per role, so a week can never
+  read as more than 100% covered.
+- `dataRange` lets the UI offer a jump to a week that actually has shifts when
+  the current week is empty.
 
 ---
 

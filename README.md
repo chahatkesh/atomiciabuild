@@ -1,6 +1,19 @@
 # Clinic Shift Scheduler
 
-A fullstack clinic shift scheduling app built for the Atomica take-home brief. Managers create and assign shifts; staff claim shifts subject to profession capacity and overlap rules. Dirty CSV imports are normalized with a full audit trail.
+A fullstack clinic shift scheduling app built for the Atomica take-home brief. Managers create and assign shifts and watch coverage week by week; staff claim shifts subject to profession capacity and overlap rules. Dirty CSV imports are normalized with a full audit trail.
+
+## Where to look first
+
+| Page          | What it shows                                                               |
+| ------------- | --------------------------------------------------------------------------- |
+| **Dashboard** | Week at a glance — every shift, its staffing status, what roles are missing |
+| **Shifts**    | Full shift list; create/edit/delete, claim, assign staff                    |
+| **My shifts** | A staff member's own claims, with the option to leave one                   |
+| **Imports**   | CSV upload and the row-by-row import report                                 |
+
+Sign in as the manager (see [Seeded logins](#seeded-logins)) and open
+**Dashboard**. The imported roster covers August 2026, so if the current week is
+empty the page will offer a one-click jump to the first scheduled week.
 
 ## Stack
 
@@ -98,7 +111,8 @@ accepts a custom CSV upload, which runs through the identical pipeline.
 pnpm test
 ```
 
-Unit tests (time maths, shift rules, CSV normalizers) need nothing but the repo.
+Unit tests (time maths, week bounds, shift rules, coverage aggregation, CSV
+normalizers) need nothing but the repo.
 
 Integration tests cover the parts that only fail under real conditions:
 concurrent claiming, claim revalidation after an edit, and import idempotency.
@@ -144,5 +158,9 @@ vercel --prod   # manual production deploy (optional)
 **Phase 2:** claiming with concurrency guarantees, manager assignment, shift-edit
 revalidation, dirty CSV import, and the Import Report page. Done.
 
-**Upcoming:** week-at-a-glance coverage dashboard (Phase 3).
-See [docs/roadmap.md](./docs/roadmap.md).
+**Phase 3:** week-at-a-glance coverage dashboard — staffing status and missing
+roles per shift, week summary, and navigation to any week. Done.
+
+All core requirements in the brief are implemented. Remaining stretch goals
+(recurring shifts, socket-based realtime) are listed in
+[docs/roadmap.md](./docs/roadmap.md).
