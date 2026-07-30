@@ -63,16 +63,16 @@ export function ImportManager() {
   };
 
   return (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
       <Card title="Import a clinic spreadsheet">
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <Typography.Paragraph className="type-caption" style={{ marginBottom: 0 }}>
             Upload <code>staff.csv</code>, <code>shifts.csv</code>, or both. Files are matched by
             their column headers, and run through the same pipeline as the seed import — duplicates
             merge, repairable rows are fixed, and anything unusable is listed below with a reason.
           </Typography.Paragraph>
 
-          {uploadError && <Alert type="error" showIcon message={uploadError} closable />}
+          {uploadError && <Alert type="error" showIcon title={uploadError} closable />}
 
           <Upload.Dragger
             multiple
@@ -146,7 +146,7 @@ export function ImportManager() {
         ) : run.isError ? (
           <Empty description="No import has been run yet. Upload a CSV above to get started." />
         ) : (
-          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Space orientation="vertical" size="large" style={{ width: "100%" }}>
             <Typography.Text className="type-caption">
               {run.data?.source === "seed" ? "Seed import" : "Manual upload"} ·{" "}
               {dayjs(run.data?.createdAt).format("MMM D, YYYY HH:mm")}

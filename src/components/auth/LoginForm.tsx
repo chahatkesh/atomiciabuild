@@ -41,7 +41,7 @@ export function LoginForm() {
             type="error"
             showIcon
             style={{ marginBottom: 16 }}
-            message={error ?? "Invalid credentials. Please try again."}
+            title={error ?? "Invalid credentials. Please try again."}
           />
         )}
 

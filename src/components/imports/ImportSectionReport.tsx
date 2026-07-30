@@ -117,7 +117,7 @@ export function ImportSectionReport({ section }: { section: ImportSectionResult 
         />
       }
     >
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Space size="large" wrap>
           <Statistic title="Written to database" value={section.persisted} />
           <Statistic title="Accepted" value={counts.accepted} />
@@ -126,7 +126,7 @@ export function ImportSectionReport({ section }: { section: ImportSectionResult 
           <Statistic
             title="Rejected"
             value={counts.rejected}
-            valueStyle={counts.rejected > 0 ? { color: "#ff4d4f" } : undefined}
+            styles={counts.rejected > 0 ? { content: { color: colors.semanticDanger } } : undefined}
           />
         </Space>
 

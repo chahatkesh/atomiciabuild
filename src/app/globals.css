@@ -16,6 +16,8 @@
   --color-gradient-orange: #ff7a3d;
   --color-gradient-coral: #ff5577;
   --color-semantic-success: #22c55e;
+  --color-semantic-warning: #f5a623;
+  --color-semantic-danger: #ef4444;
 
   --rounded-xs: 4px;
   --rounded-sm: 6px;

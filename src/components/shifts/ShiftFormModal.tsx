@@ -89,7 +89,7 @@ export function ShiftFormModal({
       destroyOnHidden
     >
       {errorMessage && (
-        <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 16 }} />
+        <Alert type="error" showIcon title={errorMessage} style={{ marginBottom: 16 }} />
       )}
 
       {shift && shift.filled.doctor + shift.filled.nurse + shift.filled.receptionist > 0 && (

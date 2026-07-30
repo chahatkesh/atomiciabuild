@@ -77,14 +77,14 @@ export function AssignStaffModal({
       afterClose={() => setUserId(null)}
       destroyOnHidden
     >
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         {shift && (
           <div className="type-caption">
             {shift.date} · {shift.startTime}–{shift.endTime}
           </div>
         )}
 
-        {errorMessage && <Alert type="error" showIcon message={errorMessage} />}
+        {errorMessage && <Alert type="error" showIcon title={errorMessage} />}
 
         {neededProfessions.size === 0 ? (
           <Alert

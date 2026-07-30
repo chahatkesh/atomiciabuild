@@ -21,6 +21,8 @@ export const colors = {
   gradientOrange: "#ff7a3d",
   gradientCoral: "#ff5577",
   semanticSuccess: "#22c55e",
+  semanticWarning: "#f5a623",
+  semanticDanger: "#ef4444",
 } as const;
 
 export const rounded = {
