@@ -102,6 +102,9 @@ vercel --prod   # manual production deploy (optional)
 
 ## Phase status
 
-**Phase 0 (current):** scaffold, auth shell, docs, CI/CD, health check, user seeding.
+**Phase 0:** scaffold, auth, docs, CI/CD, health check, user seeding. Done.
 
-**Upcoming:** shift CRUD (Phase 1), claiming + import (Phase 2), coverage dashboard (Phase 3).
+**Phase 1:** shift model, CRUD service, REST API, manager shifts UI. Done.
+
+**Upcoming:** claiming rules + CSV import (Phase 2), coverage dashboard (Phase 3).
+See [docs/roadmap.md](./docs/roadmap.md).

@@ -31,7 +31,7 @@ Setup: `tests/setup.ts` (injects test env vars)
 
 - Pure functions in `*.rules.ts` — no DB, no mocks needed
 - Time tests use fixed `CLINIC_TIMEZONE=America/Toronto` from setup
-- Import normalizer tests use rows from `problem-statement/*.csv`
+- Import normalizer tests use rows from `docs/problem-statement/*.csv`
 
 ## Integration test setup (future)
 

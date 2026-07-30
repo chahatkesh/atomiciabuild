@@ -80,7 +80,7 @@ export async function upsertUserByEmail(input: CreateUserInput): Promise<PublicU
         legacyStaffId: input.legacyStaffId,
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 
   return toPublicUser(user);

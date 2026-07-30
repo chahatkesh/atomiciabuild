@@ -17,8 +17,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:db": "tsx scripts/check-db.ts",
-    "seed:users": "tsx scripts/seed-users.ts",
+    "check:db": "tsx --env-file-if-exists=.env.local scripts/check-db.ts",
+    "seed:users": "tsx --env-file-if-exists=.env.local scripts/seed-users.ts",
     "prepare": "husky"
   },
   "dependencies": {

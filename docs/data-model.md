@@ -17,7 +17,7 @@ MongoDB collections (Mongoose). Phase 0 implements `users`; others are specified
 
 **Indexes:** `{ email: 1 }` unique
 
-## shifts (Phase 1)
+## shifts (implemented)
 
 | Field            | Type     | Notes                                    |
 | ---------------- | -------- | ---------------------------------------- |
@@ -31,7 +31,13 @@ MongoDB collections (Mongoose). Phase 0 implements `users`; others are specified
 | `legacyShiftIds` | string[] | Source CSV IDs (may be merged)           |
 | `version`        | number   | Optimistic concurrency                   |
 
-**Indexes:** `{ startAt: 1, endAt: 1 }`, `{ date: 1 }`
+**Indexes:** `{ startAt: 1, endAt: 1 }`, `{ date: 1 }`,
+and `{ date: 1, startAt: 1, endAt: 1 }` unique.
+
+The unique compound index is the importer's natural key: one shift per clinic
+time window. It is what turns the CSV's conflicting duplicate rows
+(5098 vs 5099) into a merge rather than two competing shifts, and it makes
+`POST /api/shifts` return `409` instead of silently double-booking a slot.
 
 ## claims (Phase 2)
 

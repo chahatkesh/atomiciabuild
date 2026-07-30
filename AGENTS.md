@@ -95,7 +95,7 @@ components/ → props from pages; never import *.model.ts or *.service.ts
 
 ## Do not
 
-- Edit `problem-statement/` CSVs (reference only)
+- Edit `docs/problem-statement/` CSVs (reference only)
 - Put mongoose in client bundles
 - Skip transaction retry for claim mutations
 - Trust client-only validation for business rules

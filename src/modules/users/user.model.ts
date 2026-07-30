@@ -22,7 +22,6 @@ const userSchema = new Schema<UserDocument>(
       unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
     fullName: {
       type: String,
@@ -58,8 +57,6 @@ const userSchema = new Schema<UserDocument>(
     versionKey: false,
   },
 );
-
-userSchema.index({ email: 1 }, { unique: true });
 
 export const UserModel = models.User ?? model<UserDocument>("User", userSchema);
 

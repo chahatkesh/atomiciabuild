@@ -55,27 +55,60 @@ Auth.js handlers (login, session, CSRF).
 
 ---
 
-## Phase 1 — Shifts
+## Phase 1 — Shifts (implemented)
 
-### `GET /api/shifts?from=&to=`
+Every shift response is serialized as:
 
-List shifts in date range. Auth required.
+```json
+{
+  "id": "6a6ad13bcaaff9d19fd5307b",
+  "date": "2026-08-05",
+  "startTime": "22:00",
+  "endTime": "06:00",
+  "startAt": "2026-08-06T02:00:00.000Z",
+  "endAt": "2026-08-06T10:00:00.000Z",
+  "requirements": { "doctor": 0, "nurse": 2, "receptionist": 0 },
+  "filled": { "doctor": 0, "nurse": 0, "receptionist": 0 },
+  "missing": { "doctor": 0, "nurse": 2, "receptionist": 0 },
+  "status": "empty",
+  "legacyShiftIds": [],
+  "version": 0
+}
+```
 
-### `GET /api/shifts/:id`
+`startAt`/`endAt` are UTC instants derived from the clinic-local `date` +
+`startTime`/`endTime`. Overnight windows roll the end into the next day.
 
-Single shift with claim summary.
+### `GET /api/shifts?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+List shifts, sorted by start. Any authenticated user. Both params optional.
 
 ### `POST /api/shifts`
 
-Create shift. Manager only.
+Create a shift. **Manager only.**
 
-### `PATCH /api/shifts/:id`
+**Body:** `{ date, startTime, endTime, requirements: { doctor, nurse, receptionist } }`
 
-Update shift. Manager only. Returns impact preview if claims exist.
+`startTime`/`endTime` accept `HH:mm` or `HH:mm+1` for an explicit next-day end.
 
-### `DELETE /api/shifts/:id`
+**Errors:**
 
-Delete shift. Manager only.
+- `409 CONFLICT` — a shift already occupies that date and window
+- `422 VALIDATION_ERROR` — bad date/time, identical start and end, duration
+  under 30 minutes or over 16 hours
+
+### `GET /api/shifts/:shiftId`
+
+Single shift. Any authenticated user. `404` if unknown.
+
+### `PATCH /api/shifts/:shiftId`
+
+Partial update; increments `version`. **Manager only.** Same validation and
+conflict rules as create. Phase 2 adds claim revalidation on time changes.
+
+### `DELETE /api/shifts/:shiftId`
+
+Delete a shift. **Manager only.** Returns `{ id, deleted: true }`, or `404`.
 
 ---
 

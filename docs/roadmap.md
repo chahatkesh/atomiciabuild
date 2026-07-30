@@ -18,16 +18,31 @@ Phased delivery for the Clinic Shift Scheduler take-home.
 - [x] Full documentation set
 - [x] Placeholder pages (dashboard, shifts, my-shifts, imports)
 
-## Phase 1 — Shift management
+## Phase 1 — Shift management ✓
 
-- [ ] Shift Mongoose model + indexes
-- [ ] `shift.service.ts` — CRUD with time normalization
-- [ ] API routes: `GET/POST/PATCH/DELETE /api/shifts`
-- [ ] Manager shifts page — table + create/edit modal
-- [ ] Shift edit impact preview (UI shell, logic stub)
-- [ ] Zod schemas for shift input
+- [x] Shift Mongoose model + indexes (incl. unique natural key on date + window)
+- [x] `shift.rules.ts` — requirements parsing, duration limits, staffing status
+- [x] `shift.service.ts` — CRUD with time normalization
+- [x] API routes: `GET/POST /api/shifts`, `GET/PATCH/DELETE /api/shifts/[shiftId]`
+- [x] Manager shifts page — table + create/edit modal + delete confirm
+- [x] Shift edit impact warning (UI shell; release logic lands in Phase 2)
+- [x] Zod schemas for shift input
+- [x] TanStack Query hooks with cache invalidation
+- [x] Unit tests for shift rules
 
-**Exit criteria:** Manager can create/edit/delete shifts; times stored correctly including overnight.
+**Exit criteria met.** Verified against MongoDB Atlas:
+
+| Check                        | Result                                      |
+| ---------------------------- | ------------------------------------------- |
+| Create day shift 09:00–17:00 | 201, `startAt` 13:00Z (EDT)                 |
+| Create overnight 22:00–06:00 | 201, `endAt` rolls to next day              |
+| Duplicate date + window      | 409 `CONFLICT`                              |
+| 18h window (15:00–09:00)     | 422 `VALIDATION_ERROR`                      |
+| Identical start/end          | 422 "Start and end time cannot be the same" |
+| Unauthenticated API call     | 401 JSON envelope                           |
+| Staff create/delete          | 403 `FORBIDDEN`                             |
+| Staff list shifts            | 200                                         |
+| Unknown shift id             | 404                                         |
 
 ## Phase 2 — Claims + Import
 
@@ -38,7 +53,7 @@ Phased delivery for the Clinic Shift Scheduler take-home.
 - [ ] Manager direct assignment
 - [ ] Import normalizers (staff + shifts)
 - [ ] `importService.importFromFiles()`
-- [ ] Seed script for problem-statement CSVs
+- [ ] Seed script for `docs/problem-statement/` CSVs
 - [ ] Manager CSV upload UI
 - [ ] Import Report page with row-level detail
 - [ ] Shift edit → claim revalidation + release

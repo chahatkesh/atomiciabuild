@@ -4,8 +4,8 @@ Automatic seed import + manager UI upload using the same normalization logic.
 
 ## Sources
 
-- `problem-statement/staff.csv` — 41 data rows
-- `problem-statement/shifts.csv` — 117 data rows
+- `docs/problem-statement/staff.csv` — 41 data rows
+- `docs/problem-statement/shifts.csv` — 117 data rows
 
 ## Pipeline stages
 

@@ -150,6 +150,48 @@ Architectural and product decisions for the Clinic Shift Scheduler, with rationa
 
 ---
 
+## 14. Shift duration bounds (30 minutes to 16 hours)
+
+**Decision:** Reject shifts shorter than 30 minutes or longer than 16 hours.
+
+**Rationale:** Overnight windows are stored by rolling the end into the next
+day, which means _any_ end time parses as "valid" given enough rollover. The
+legacy rows `15:00-09:00` (18h) and `12:00-12:00` (24h) would otherwise import
+as real shifts. A duration bound is what actually distinguishes a night shift
+from a data-entry error.
+
+**Tradeoff:** A genuine 24-hour on-call shift would need the limit raised. The
+bound lives in one constant (`MAX_SHIFT_MINUTES`) for that reason.
+
+---
+
+## 15. Unique natural key on (date, startAt, endAt)
+
+**Decision:** A unique compound index enforces one shift per clinic time window.
+
+**Rationale:** This is the database-level expression of decision 9. It makes the
+importer's merge behaviour safe under retry, and stops the manager UI from
+creating a second shift that overlaps an existing one exactly.
+
+**Tradeoff:** A clinic that genuinely runs two independent teams in the same
+window cannot model that as two shifts; they would need one shift with combined
+requirements. Given the coverage dashboard is per-window, that is the better fit.
+
+---
+
+## 16. API routes excluded from the proxy matcher
+
+**Decision:** `src/proxy.ts` matches page routes only; `/api/*` is excluded.
+
+**Rationale:** The proxy redirects unauthenticated traffic to `/login`, which is
+right for pages and wrong for an API — a fetch client got a `307` to an HTML
+page instead of a JSON error. Route handlers already call
+`requireUser()`/`requireManager()`, so excluding `/api` lets them answer with a
+proper `401`/`403` envelope. This reinforces decision 4: the proxy is a UX
+redirect, never the security boundary.
+
+---
+
 ## One thing I'd do differently with more time
 
 **Add integration tests against a real MongoDB replica set** covering concurrent claim scenarios (two staff claiming the last nurse slot simultaneously, overlapping shift rejection under load). Unit tests cover time math today, but the highest-risk requirement is concurrent correctness — and that's best validated with parallel test workers hitting the same shift document.
