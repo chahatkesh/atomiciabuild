@@ -2,6 +2,7 @@ import { GeistSans } from "geist/font/sans";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
+import { resolveAppOrigin } from "@/lib/config/app-url";
 import { AntdAppProvider, AppQueryProvider, AppSessionProvider } from "@/providers";
 
 import "./globals.css";
@@ -12,7 +13,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const APP_URL = process.env.AUTH_URL ?? "https://atomiciabuild.vercel.app";
+const APP_URL = resolveAppOrigin();
 const DESCRIPTION =
   "Week-at-a-glance coverage for clinic shifts. Managers schedule and assign, staff claim what fits, and capacity and overlap rules are enforced on the server.";
 

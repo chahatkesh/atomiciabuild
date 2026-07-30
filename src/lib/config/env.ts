@@ -1,11 +1,18 @@
 import { z } from "zod";
 
 import { DEFAULT_CLINIC_TIMEZONE } from "@/constants";
+import { parseHttpUrl } from "@/lib/config/app-url";
 
 const envSchema = z.object({
   MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
   AUTH_SECRET: z.string().min(1, "AUTH_SECRET is required"),
-  AUTH_URL: z.string().url().optional(),
+  // Repaired rather than rejected: nothing here reads AUTH_URL (Auth.js reads
+  // process.env itself), so a schemeless value must not fail every request that
+  // touches getEnv() — which is every request.
+  AUTH_URL: z
+    .string()
+    .optional()
+    .transform((value) => parseHttpUrl(value)?.toString()),
   AUTH_TRUST_HOST: z
     .enum(["true", "false"])
     .optional()

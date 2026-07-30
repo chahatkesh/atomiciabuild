@@ -1,5 +1,8 @@
 export const APP_NAME = "Clinic Shift Scheduler";
 
+/** Last-resort origin for absolute metadata URLs when the environment has none. */
+export const APP_CANONICAL_URL = "https://atomiciabuild.vercel.app";
+
 export const ROUTES = {
   login: "/login",
   dashboard: "/dashboard",

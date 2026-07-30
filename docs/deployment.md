@@ -53,6 +53,11 @@ gh secret set VERCEL_PROJECT_ID -R chahatkesh/atomiciabuild --body "prj_xos3OZ3v
 | `CLINIC_TIMEZONE` | `America/Toronto`       | `America/Toronto`                         |
 | `AUTH_TRUST_HOST` | `true`                  | `true`                                    |
 
+`AUTH_URL` must include the scheme. A bare `atomiciabuild.vercel.app` is repaired
+to `https://` at startup (DECISIONS.md §33) rather than failing the build, but the
+stored value should still be a full URL — and since `AUTH_TRUST_HOST` is set,
+omitting `AUTH_URL` entirely is also valid.
+
 ### Manual / CLI deploy
 
 ```bash
