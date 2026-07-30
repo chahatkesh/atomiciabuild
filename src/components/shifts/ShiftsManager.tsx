@@ -19,6 +19,7 @@ import { MissingRoleTags, RequirementTags, StaffingStatusTag } from "@/component
 import { useClaimShift, useReleaseClaim } from "@/hooks/useClaims";
 import { useCreateShift, useDeleteShift, useShifts, useUpdateShift } from "@/hooks/useShifts";
 import { ApiRequestError } from "@/lib/api/client";
+import { formatShiftWindow } from "@/lib/time/format";
 import { colors, spacing } from "@/theme";
 import type { ClaimRecord, ShiftListItem } from "@/modules/claims/types";
 import type { ReleasedClaimSummary } from "@/modules/claims/types";
@@ -31,9 +32,7 @@ interface ShiftsManagerProps {
 }
 
 function formatWindow(shift: ShiftListItem): string {
-  const crossesMidnight = !dayjs(shift.endAt).isSame(dayjs(shift.startAt), "day");
-  const suffix = crossesMidnight ? " (+1)" : "";
-  return `${shift.startTime.replace("+1", "")} – ${shift.endTime.replace("+1", "")}${suffix}`;
+  return formatShiftWindow(shift);
 }
 
 function errorMessageFrom(error: unknown): string {
