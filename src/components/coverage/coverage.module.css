@@ -179,6 +179,17 @@
   color: var(--color-ink-muted);
 }
 
+/* Lens control and legend share a row on desktop, stack on a phone. */
+.lensRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-xs);
+  border-top: 1px solid var(--color-hairline-soft);
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;

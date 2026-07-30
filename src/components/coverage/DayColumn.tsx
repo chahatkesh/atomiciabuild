@@ -16,10 +16,13 @@ const DOT_CLASS: Record<StaffingStatus, string> = {
 interface DayColumnProps {
   day: DayCoverage;
   today: string;
+  /** Hides fully staffed shifts. Day totals are unaffected — a covered shift
+      contributes no open slots, so the header count stays true either way. */
+  gapsOnly?: boolean;
   onSelectShift?: (shift: CoverageShift) => void;
 }
 
-export function DayColumn({ day, today, onSelectShift }: DayColumnProps) {
+export function DayColumn({ day, today, gapsOnly = false, onSelectShift }: DayColumnProps) {
   const date = dayjs(day.date);
   const isToday = day.date === today;
   const isPast = day.date < today;
@@ -32,6 +35,9 @@ export function DayColumn({ day, today, onSelectShift }: DayColumnProps) {
   }
 
   const unfilled = day.totals.required - day.totals.filled;
+  const visible = gapsOnly
+    ? day.shifts.filter((shift) => shift.status !== "fully_staffed")
+    : day.shifts;
 
   return (
     <section className={classNames.join(" ")} aria-label={date.format("dddd, D MMMM YYYY")}>
@@ -48,10 +54,12 @@ export function DayColumn({ day, today, onSelectShift }: DayColumnProps) {
       ) : null}
 
       <div className={styles.shiftList}>
-        {day.shifts.length === 0 ? (
-          <p className={styles.emptyDay}>No shifts</p>
+        {visible.length === 0 ? (
+          <p className={styles.emptyDay}>
+            {day.shifts.length === 0 ? "No shifts" : "Every shift covered"}
+          </p>
         ) : (
-          day.shifts.map((shift) => (
+          visible.map((shift) => (
             <CoverageShiftCard key={shift.id} shift={shift} onSelect={onSelectShift} />
           ))
         )}

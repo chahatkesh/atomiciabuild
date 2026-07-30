@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Modal, Skeleton } from "antd";
+import { Alert, Button, Modal, Segmented, Skeleton } from "antd";
 import dayjs from "dayjs";
 import { useState } from "react";
 
@@ -36,15 +36,25 @@ function Legend() {
       <span className={styles.legendItem}>
         <span className={`${styles.dot} ${styles.dotEmpty}`} aria-hidden /> Empty
       </span>
-      <span className={styles.legendItem}>Chips show what is still missing (D / N / R).</span>
+      <span className={styles.legendItem}>
+        Chips count who is still missing — D doctor, N nurse, R receptionist.
+      </span>
     </div>
   );
 }
 
-export function CoverageDashboard() {
+/** "all" audits the week; "gaps" answers "where am I needed?". */
+export type CoverageLens = "all" | "gaps";
+
+interface CoverageDashboardProps {
+  defaultLens?: CoverageLens;
+}
+
+export function CoverageDashboard({ defaultLens = "all" }: CoverageDashboardProps) {
   // undefined means "whatever week the server thinks today is in".
   const [weekStart, setWeekStart] = useState<string | undefined>(undefined);
   const [selected, setSelected] = useState<CoverageShift | null>(null);
+  const [lens, setLens] = useState<CoverageLens>(defaultLens);
 
   const { data, isPending, isError, error, isFetching, refetch } = useWeekCoverage(weekStart);
 
@@ -75,6 +85,7 @@ export function CoverageDashboard() {
   const isCurrentWeek = data.today >= data.weekStart && data.today <= data.weekEnd;
   const hasShifts = data.totals.shifts > 0;
   const firstScheduled = data.dataRange.firstDate;
+  const understaffed = data.totals.partiallyStaffed + data.totals.empty;
 
   return (
     <div style={{ display: "grid", gap: spacing.lg }}>
@@ -89,7 +100,19 @@ export function CoverageDashboard() {
           onRefresh={() => refetch()}
         />
         <CoverageSummary totals={data.totals} />
-        <Legend />
+
+        <div className={styles.lensRow}>
+          <Segmented<CoverageLens>
+            value={lens}
+            onChange={setLens}
+            aria-label="Filter the week"
+            options={[
+              { label: `All shifts (${data.totals.shifts})`, value: "all" },
+              { label: `Needs staff (${understaffed})`, value: "gaps" },
+            ]}
+          />
+          <Legend />
+        </div>
       </div>
 
       {!hasShifts && firstScheduled ? (
@@ -106,9 +129,24 @@ export function CoverageDashboard() {
         />
       ) : null}
 
+      {hasShifts && lens === "gaps" && understaffed === 0 ? (
+        <Alert
+          type="success"
+          showIcon
+          title="Every shift this week is fully staffed"
+          description="Nothing needs filling. Switch to “All shifts” to see the full week."
+        />
+      ) : null}
+
       <div className={styles.grid}>
         {data.days.map((day) => (
-          <DayColumn key={day.date} day={day} today={data.today} onSelectShift={setSelected} />
+          <DayColumn
+            key={day.date}
+            day={day}
+            today={data.today}
+            gapsOnly={lens === "gaps"}
+            onSelectShift={setSelected}
+          />
         ))}
       </div>
 
