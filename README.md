@@ -1,58 +1,96 @@
 # Clinic Shift Scheduler
 
-A fullstack clinic shift scheduling app built for the Atomica take-home brief. Managers create and assign shifts and watch coverage week by week; staff claim shifts subject to profession capacity and overlap rules. Dirty CSV imports are normalized with a full audit trail.
+A clinic rota app built for the Atomicia Build take-home. Managers create, edit
+and assign shifts and watch coverage week by week; staff claim the shifts that
+fit them. Capacity and overlap rules are enforced on the server and hold under
+concurrent load. The clinic's messy legacy spreadsheet is imported with a
+row-by-row audit trail.
 
-## Where to look first
+**Live:** https://atomiciabuild.vercel.app
+**Repository:** https://github.com/chahatkesh/atomiciabuild
 
-| Page          | What it shows                                                               |
-| ------------- | --------------------------------------------------------------------------- |
-| **Dashboard** | Week at a glance — every shift, its staffing status, what roles are missing |
-| **Shifts**    | Full shift list; create/edit/delete, claim, assign staff                    |
-| **My shifts** | A staff member's own claims, with the option to leave one                   |
-| **Imports**   | CSV upload and the row-by-row import report                                 |
+Every account uses the password **`Clinic123!`**.
 
-Sign in as the manager (see [Seeded logins](#seeded-logins)) and open
-**Dashboard**. The imported roster covers August 2026, so if the current week is
-empty the page will offer a one-click jump to the first scheduled week.
+| Sign in as  | Email                              | What you'll see                                    |
+| ----------- | ---------------------------------- | -------------------------------------------------- |
+| **Manager** | `manager@clinicmail.test`          | Everything, including assignment and Import Report |
+| **Nurse**   | `anya.haddad@clinicmail.test`      | Claim/leave nurse slots only                       |
+| **Doctor**  | `marcus.whitfield@clinicmail.test` | Claim/leave doctor slots only                      |
+
+## A 60-second tour
+
+1. Sign in as the **manager**. You land on **Coverage** — the imported roster
+   lives in August 2026, so if the current week is empty the page offers a
+   one-click jump to the first scheduled week.
+2. Switch the lens to **Needs staff** to hide everything already covered. Each
+   card shows its window, `filled/required`, and chips counting who is still
+   missing (D / N / R). Click one for the roster.
+3. Go to **Shifts** and edit a shift that already has claims. The form warns you
+   first; after saving you are told exactly who was released and why.
+4. Open **Import Report** for the seed run — 158 rows read, with the original
+   row, what was wrong with it, and what the importer did, for every one. Upload
+   a CSV of your own on the same page; it runs through the identical pipeline.
+5. Sign in as a **nurse** in another browser. The dashboard reframes as "Where
+   you're needed" and defaults to the gaps. Try claiming two overlapping shifts,
+   or a shift whose nurse slots are full — both are refused with a specific
+   reason, by the server.
+
+## How the brief maps to the app
+
+| Requirement                                   | Where it lives                                                                               |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Roles, professions, self-only claiming        | `modules/auth`, `app/api/shifts/[shiftId]/claim/route.ts`                                    |
+| Shift CRUD, manager-only                      | `modules/shifts/shift.service.ts`, `requireManager()` on every write route                   |
+| Capacity + overlap rules                      | `modules/claims/claim.service.ts` — one `claimShift()` for self-claim and manager assign     |
+| Correct under concurrency                     | Transaction + conditional `$inc` + partial-unique index; see `DECISIONS.md` §19              |
+| Re-validation after a shift edit              | `shift.service.ts` → `revalidateShiftClaims()`; only broken claims are released              |
+| Dirty CSV import, seed + upload, same logic   | `modules/imports/import.service.ts` → `runImport()`, called by `scripts/seed.ts` and the API |
+| Import Report, manager only                   | `/imports` (`requireManagerPage`) and all three `/api/import*` routes (`requireManager`)     |
+| Week-at-a-glance, missing roles, jump-to-week | `modules/coverage`, `components/coverage/*`                                                  |
+| Live updates (stretch)                        | 15s polling + refetch-on-focus behind `RealtimePort`; `DECISIONS.md` §24                     |
+
+Recurring shifts are the one stretch goal not built — see
+[Not built](#what-i-deliberately-did-not-build).
 
 ## Stack
 
-| Layer       | Choice                                                      |
-| ----------- | ----------------------------------------------------------- |
-| Framework   | Next.js 16 (App Router, Turbopack)                          |
-| UI          | Ant Design 6 + Framer dark design system (`docs/design.md`) |
-| Database    | MongoDB Atlas via Mongoose 9                                |
-| Auth        | Auth.js v5 (Credentials + JWT sessions)                     |
-| Validation  | Zod 4                                                       |
-| Client data | TanStack Query (polling/refetch-on-focus)                   |
-| Tests       | Vitest                                                      |
-| Tooling     | pnpm, Husky, commitlint, lint-staged, GitHub Actions        |
-| Deploy      | Vercel                                                      |
+| Layer       | Choice                                                          |
+| ----------- | --------------------------------------------------------------- |
+| Framework   | Next.js 16 (App Router, Turbopack)                              |
+| UI          | Ant Design 6 + a Framer-inspired dark system (`docs/design.md`) |
+| Database    | MongoDB Atlas via Mongoose 9                                    |
+| Auth        | Auth.js v5 (Credentials + JWT sessions)                         |
+| Validation  | Zod 4                                                           |
+| Client data | TanStack Query (polling / refetch-on-focus)                     |
+| Tests       | Vitest — 113 unit + integration                                 |
+| Tooling     | pnpm, Husky, commitlint, lint-staged, GitHub Actions            |
+| Deploy      | Vercel                                                          |
 
-## Quick start
+MongoDB was chosen for the document shape of shifts, claims and import audit
+rows; the claim logic depends on **transactions**, so it needs a replica set —
+Atlas or the bundled compose file, never a standalone `mongod`.
+
+## Local setup
 
 ```bash
-cp .env.example .env.local
-# Set MONGODB_URI to the Atlas connection string (shared with production)
-# Set AUTH_SECRET (e.g. npx auth secret)
+cp .env.example .env.local     # set MONGODB_URI and AUTH_SECRET (npx auth secret)
 
 pnpm install
-pnpm check:db   # verifies the connection and that transactions are available
-pnpm seed       # creates the manager and imports both clinic CSVs
+pnpm check:db                  # verifies the connection and that transactions work
+pnpm seed                      # creates the manager and imports both clinic CSVs
 pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-`pnpm seed` is idempotent, so it is safe to re-run. Use `pnpm seed:reset` to
-clear shifts, claims and import history first and re-import from scratch; staff
-accounts are preserved either way.
+`pnpm seed` is idempotent, so re-running it is safe. `pnpm seed:reset` clears
+shifts, claims and import history first and re-imports from scratch; staff
+accounts survive either way.
 
-Optional: `docker compose up -d` if you prefer a local Mongo replica set instead of Atlas.
-Transactions are required (the claim logic depends on them), so a standalone
-`mongod` will not work — use Atlas or the provided replica-set compose file.
+**No Atlas cluster?** `docker compose up -d` starts a single-node replica set
+locally with the URI already in `.env.example`, then follow the same steps.
 
-## Environment variables
+### Environment variables
 
 | Variable          | Required | Description                                            |
 | ----------------- | -------- | ------------------------------------------------------ |
@@ -60,36 +98,44 @@ Transactions are required (the claim logic depends on them), so a standalone
 | `AUTH_SECRET`     | Yes      | Auth.js secret (`npx auth secret`)                     |
 | `AUTH_URL`        | Prod     | Public app URL                                         |
 | `CLINIC_TIMEZONE` | No       | IANA timezone (default `America/Toronto`)              |
-| `AUTH_TRUST_HOST` | No       | Set `true` behind proxies / Vercel preview             |
+| `AUTH_TRUST_HOST` | No       | Set `true` behind proxies / on Vercel                  |
 
-## Seeded logins
+## Tests
 
-`pnpm seed` creates the manager and imports the 34 staff from `staff.csv`.
-**Every account uses the password `Clinic123!`.**
+```bash
+pnpm test
+```
 
-| Role         | Email                              |
-| ------------ | ---------------------------------- |
-| Manager      | `manager@clinicmail.test`          |
-| Doctor       | `marcus.whitfield@clinicmail.test` |
-| Nurse        | `anya.haddad@clinicmail.test`      |
-| Nurse        | `ivy.bell@clinicmail.test`         |
-| Receptionist | `ben.marchand@clinicmail.test`     |
-| Receptionist | `hiro.iyer@clinicmail.test`        |
+113 tests in one command. Unit tests (time maths, week bounds, shift rules,
+coverage aggregation, CSV normalizers) need nothing but the repo and pass under
+a foreign timezone as well as the clinic's.
 
-Any other address from `docs/problem-statement/staff.csv` works too, as long as
-that row was accepted by the importer — the Import Report page lists which were
-not.
+Integration tests cover what only breaks under real conditions: eight
+simultaneous claims on a one-slot shift, two overlapping claims fired at the
+same instant, claim re-validation after an edit, and import idempotency. They
+use `MONGODB_URI` but always against a **separate database**
+(`clinic_scheduler_integration_test`), so they cannot touch seeded data, and
+they skip rather than fail when no cluster is reachable — which keeps CI green
+without a live secret.
 
-## What the import does with the supplied CSVs
+## What the importer did with the supplied CSVs
 
 | File         | Rows | Accepted | Repaired | Merged | Rejected | Written |
 | ------------ | ---- | -------- | -------- | ------ | -------- | ------- |
-| `staff.csv`  | 41   | 16       | 18       | 3      | 4        | 34      |
-| `shifts.csv` | 117  | 35       | 50       | 27     | 5        | 85      |
+| `staff.csv`  | 41   | 16       | 18       | 3      | 4        | **34**  |
+| `shifts.csv` | 117  | 35       | 50       | 27     | 5        | **85**  |
 
-Sign in as the manager and open **Imports** for the row-by-row breakdown: what
-was wrong with each row and what the importer did about it. The same page
-accepts a custom CSV upload, which runs through the identical pipeline.
+Repairs include `(at)` → `@`, whitespace and casing, role synonyms (`Dr`,
+`RN`, `front desk`), and three date conventions disambiguated by separator.
+Merges collapse rows describing the same `(date, start, end)` window, taking the
+higher requirement per profession. Rejections are things no rule can save:
+`2026-02-30`, an 18-hour window, a missing email, a role of "Janitor".
+
+Every one of those verdicts is visible per row on the **Import Report** page.
+The reasoning behind each policy is in `DECISIONS.md` §9, §21 and §22.
+
+Any address from `docs/problem-statement/staff.csv` works as a login, provided
+that row was accepted — the report lists the ones that were not.
 
 ## Scripts
 
@@ -103,64 +149,46 @@ accepts a custom CSV upload, which runs through the identical pipeline.
 | `pnpm check:db`   | Verify Mongo + transaction support         |
 | `pnpm seed`       | Seed manager and import both CSVs          |
 | `pnpm seed:reset` | Wipe shifts/claims/imports, then re-import |
-| `pnpm seed:users` | Seed only the four original demo accounts  |
+| `pnpm seed:users` | Auth-only smoke seed (no CSV import)       |
 
-## Tests
+## Deployment
 
-```bash
-pnpm test
-```
+Production is https://atomiciabuild.vercel.app, already seeded by the importer.
 
-Unit tests (time maths, week bounds, shift rules, coverage aggregation, CSV
-normalizers) need nothing but the repo.
+GitHub Actions owns the pipeline: `typecheck → lint → test → build`, then a
+production deploy on push to `main`. Vercel's own Git auto-deploy is disabled
+(`git.deploymentEnabled: false`) so nothing ships without passing CI. Details in
+[docs/deployment.md](./docs/deployment.md).
 
-Integration tests cover the parts that only fail under real conditions:
-concurrent claiming, claim revalidation after an edit, and import idempotency.
-They connect to `MONGODB_URI` from `.env.local` but always use a **separate
-database** (`clinic_scheduler_integration_test`), so they cannot touch seeded
-data. Without a reachable cluster they skip rather than fail, which keeps CI
-green.
+**Cold starts:** the Atlas M0 free tier auto-pauses after 30 days idle and takes
+a few seconds to wake, and Vercel functions cold-start in roughly 1–3s. The
+first request after a quiet period can feel slow; everything after it is warm.
 
-## Deployment (Vercel)
+## What I deliberately did not build
 
-**Production:** https://atomiciabuild.vercel.app
+**Recurring shifts.** The optional stretch goal. Doing it properly means a
+series document plus per-occurrence overrides so that editing one Wednesday does
+not fork the series, and that interacts with the claim re-validation rules in
+ways worth designing rather than bolting on. I chose to spend the time on
+concurrency correctness and the import audit trail instead, which the brief
+weights more heavily.
 
-| Stage | What runs                                                         |
-| ----- | ----------------------------------------------------------------- |
-| CI    | GitHub Actions `quality` — typecheck, lint, test, build           |
-| CD    | Same workflow runs `deploy-production` after CI on push to `main` |
+**Notifying someone their claim was released.** This is the honest weak spot,
+and it is the subject of the closing section of
+[DECISIONS.md](./DECISIONS.md#one-thing-id-do-differently-with-more-time).
 
-Vercel Git auto-deploy is disabled (`git.deploymentEnabled: false`) so only Actions deploys. Requires repo secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+## Documentation
 
-Local and production share the same MongoDB Atlas database (`atomiciabuild`). See [docs/deployment.md](./docs/deployment.md).
-
-```bash
-vercel --prod   # manual production deploy (optional)
-```
-
-**Cold starts:** Atlas M0 free clusters auto-pause after 30 days idle and may take a few seconds to wake. First request after pause can feel slow.
-
-## Project docs
-
-- [AGENTS.md](./AGENTS.md) — agent/developer instructions
-- [DECISIONS.md](./DECISIONS.md) — architectural decisions
-- [docs/architecture.md](./docs/architecture.md)
-- [docs/design.md](./docs/design.md)
-- [docs/auth.md](./docs/auth.md)
-- [docs/roadmap.md](./docs/roadmap.md)
-
-## Phase status
-
-**Phase 0:** scaffold, auth, docs, CI/CD, health check, user seeding. Done.
-
-**Phase 1:** shift model, CRUD service, REST API, manager shifts UI. Done.
-
-**Phase 2:** claiming with concurrency guarantees, manager assignment, shift-edit
-revalidation, dirty CSV import, and the Import Report page. Done.
-
-**Phase 3:** week-at-a-glance coverage dashboard — staffing status and missing
-roles per shift, week summary, and navigation to any week. Done.
-
-All core requirements in the brief are implemented. Remaining stretch goals
-(recurring shifts, socket-based realtime) are listed in
-[docs/roadmap.md](./docs/roadmap.md).
+| Document                                             | Contents                                             |
+| ---------------------------------------------------- | ---------------------------------------------------- |
+| [DECISIONS.md](./DECISIONS.md)                       | 32 decisions with rationale and tradeoffs            |
+| [docs/architecture.md](./docs/architecture.md)       | Layering, module boundaries, ESLint enforcement      |
+| [docs/concurrency.md](./docs/concurrency.md)         | Why claims need transactions and a version bump      |
+| [docs/import-pipeline.md](./docs/import-pipeline.md) | Normalizers, merge policy, verdict taxonomy          |
+| [docs/data-model.md](./docs/data-model.md)           | Collections and indexes                              |
+| [docs/api.md](./docs/api.md)                         | Every endpoint, its guard, and its response envelope |
+| [docs/auth.md](./docs/auth.md)                       | Session strategy and where authorization happens     |
+| [docs/testing.md](./docs/testing.md)                 | What is tested and why                               |
+| [docs/design.md](./docs/design.md)                   | Design tokens and component patterns                 |
+| [docs/roadmap.md](./docs/roadmap.md)                 | Phase plan with measured verification results        |
+| [AGENTS.md](./AGENTS.md)                             | Conventions for anyone (or anything) editing this    |

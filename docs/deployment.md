@@ -61,10 +61,17 @@ vercel --prod --scope chahat-kesharwanis-projects
 
 ### Post-deploy seeding
 
+The brief requires the deployed site to be pre-populated by the importer, so the
+full seed — manager account plus both clinic CSVs — is the one to run:
+
 ```bash
-# Uses MONGODB_URI from .env.local (Atlas)
-pnpm seed:users
+# Uses MONGODB_URI from .env.local (Atlas, shared with production)
+pnpm seed          # idempotent; safe to re-run
+pnpm seed:reset    # wipe shifts/claims/import runs first, then re-import
 ```
+
+`pnpm seed:users` only creates the four original demo accounts and imports
+nothing. It exists for auth-only smoke tests, not for a real deploy.
 
 ## CI/CD pipeline
 
@@ -91,7 +98,7 @@ cp .env.example .env.local
 # Set MONGODB_URI to the Atlas connection string
 pnpm install
 pnpm check:db
-pnpm seed:users
+pnpm seed
 pnpm build && pnpm start
 ```
 

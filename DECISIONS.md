@@ -74,11 +74,11 @@ Architectural and product decisions for the Clinic Shift Scheduler, with rationa
 
 ## 8. Editing claimed shifts
 
-**Decision:** On time change, revalidate all active claims. Violating claims move to `status: "released"` with reason + audit record. Manager sees impact preview before save.
+**Decision:** On time change, revalidate all active claims. Violating claims move to `status: "released"` with reason + audit record. The edit form warns before saving that a shift already has claims; the response then names exactly who was released and why.
 
 **Rationale:** Never silently drop staff from a shift they claimed in good faith.
 
-**Tradeoff:** More UX work; staff may need to re-claim.
+**Tradeoff:** The warning is generic — it cannot name who _would_ be dropped without running the revalidation twice. Staff may need to re-claim. See decision 20 for the release policy.
 
 ---
 
@@ -287,9 +287,13 @@ seeded logins, applied with `$setOnInsert` so re-imports never overwrite one.
 staff logins to be usable for review. A shared, documented password is the
 honest option for a take-home.
 
+The login page also offers one-click sign-in as a manager, a nurse, or a doctor.
+Since the credentials are published in the README regardless, putting them behind
+a copy-paste step protects nothing and only costs the reviewer time.
+
 **Tradeoff:** Unacceptable in production, where this should be an invite or
-first-login reset. The password is also hardcoded in the seed rather than an
-env var.
+first-login reset, and where the demo block would have to go. The password is
+also hardcoded in the seed rather than read from an env var.
 
 ---
 
@@ -356,10 +360,12 @@ so the dot is a "look here" signal rather than a score.
 
 ---
 
-## 28. Coverage is readable by staff, not managers only
+## 28. One coverage page for both roles, with a different default lens
 
 **Decision:** `GET /api/coverage` and `/dashboard` require a signed-in user, not
-a manager. The page reframes itself for staff ("Where you're needed"), while all
+a manager. Both roles get the same component and the same data. What differs is
+the **default lens**: a manager lands on _All shifts_, a staff member lands on
+_Needs staff_, which hides fully staffed shifts. Either role can switch. All
 management actions stay manager-only.
 
 **Rationale:** The brief calls this a manager view, and for managers it is. But
@@ -367,6 +373,17 @@ the dashboard is the app's landing page for both roles, and a staff member seein
 which shifts are short is exactly what prompts them to claim one — the shortage
 information is the same information the Shifts page already shows them. Hiding it
 would cost a real workflow to protect nothing.
+
+The lens is what makes one page honestly serve two intents. A manager is auditing
+the week and needs to see the covered shifts to trust the green ones; a staff
+member is scanning for somewhere to be useful, and every covered shift is noise.
+Two separate pages would have duplicated the grid, the week navigation, and the
+aggregation to express a difference that is really just a filter.
+
+Filtering is client-side and deliberately does not touch the day totals: a fully
+staffed shift contributes zero open slots, so "3 slots open" reads the same with
+the covered shifts hidden. The week summary above the grid always describes the
+whole week, which is what a summary should do.
 
 **Tradeoff:** Staff can see clinic-wide staffing levels. If that were sensitive,
 the fix is a narrowed response (counts without rosters) rather than a blanket 403.
@@ -429,6 +446,24 @@ column counts need media queries, which inline styles cannot express.
 
 **Tradeoff:** One more file per concern, and one styling approach (CSS modules)
 that the rest of the app does not yet use.
+
+---
+
+## 32. The shell owns the page heading
+
+**Decision:** `AppShell` renders the only `<h1>` on every page, from a
+route-to-copy map that takes the role and the user's first name. Pages render
+content, never their own title.
+
+**Rationale:** The dashboard had grown a second `<h1>` beside the shell's, so the
+page announced itself twice and the two could drift — the nav said "Coverage"
+while the page said "Where you're needed". Putting the map in the shell means the
+nav label, the heading and the subtitle are written in one place and cannot
+disagree, and every route gets a one-line explanation of what it is for instead
+of only the dashboard having one.
+
+**Tradeoff:** Page copy lives away from the page. Worth it for four routes; a
+larger app would want each page to export its own header metadata.
 
 ---
 

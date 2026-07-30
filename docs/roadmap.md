@@ -131,12 +131,28 @@ Behaviour verified:
 | Staff account reading `/api/coverage`    | 200 (dashboard serves both roles)          |
 | Claim made on Shifts page                | dashboard reflects it within one poll      |
 
+## Phase 4 — Submission polish ✓
+
+- [x] Coverage lens (_All shifts_ / _Needs staff_), defaulting per role so the
+      staff framing matches what the grid actually shows
+- [x] Single role-aware page header owned by `AppShell` — one `<h1>` per page,
+      with a subtitle on every route instead of only the dashboard
+- [x] Retry affordance on every failed query (Shifts, My Shifts, Import Report)
+- [x] Import Report distinguishes "nothing imported yet" (404) from a real failure
+- [x] Responsive fixes at 375px: header identity moves into the drawer, antd card
+      heads stack, shift-form rows wrap
+- [x] Removed the dead `modules/import` Phase-2 stub
+- [x] Corrected UI copy that promised a notification the app does not send
+- [x] Dropped the last two deprecated antd 6 `Alert message` props — console is clean
+- [x] `opengraph-image` / `twitter-image` rendered with `next/og` from the app's
+      own tokens, plus `metadataBase`, OG, Twitter and theme-color metadata
+
 ## Stretch goals
 
-| Goal             | Approach                               | Priority |
-| ---------------- | -------------------------------------- | -------- |
-| Recurring shifts | Series document + occurrence overrides | Low      |
-| Live updates     | SSE or Pusher behind `RealtimePort`    | Low      |
+| Goal             | Approach                               | Status                 |
+| ---------------- | -------------------------------------- | ---------------------- |
+| Live updates     | SSE or Pusher behind `RealtimePort`    | ✓ done as 15s polling  |
+| Recurring shifts | Series document + occurrence overrides | Not built — see README |
 
 ## Estimated effort
 
