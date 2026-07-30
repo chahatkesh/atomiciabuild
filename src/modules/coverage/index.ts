@@ -1,6 +1,9 @@
-export { coverageService } from "./coverage.service";
+export { getWeekCoverage } from "./coverage.service";
+export { buildWeekCoverage, emptyCoverageTotals, worstStatus } from "./coverage.rules";
 export type {
-  CoverageService,
-  CoverageShiftSummary,
-  CoverageWeekSummary,
-} from "./coverage.service";
+  CoverageDataRange,
+  CoverageShift,
+  CoverageTotals,
+  DayCoverage,
+  WeekCoverage,
+} from "./types";

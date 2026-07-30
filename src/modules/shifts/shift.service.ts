@@ -82,6 +82,24 @@ export async function listShifts(params: ListShiftsParams = {}): Promise<ShiftRe
   return shifts.map(toShiftRecord);
 }
 
+/**
+ * First and last scheduled dates. The dashboard uses this to point a manager at
+ * a week that has shifts when the week they are viewing is empty.
+ */
+export async function getShiftDateRange(): Promise<{
+  firstDate: string | null;
+  lastDate: string | null;
+}> {
+  await connectDb();
+
+  const [first, last] = await Promise.all([
+    ShiftModel.findOne().sort({ date: 1 }).select("date").lean<{ date: string } | null>(),
+    ShiftModel.findOne().sort({ date: -1 }).select("date").lean<{ date: string } | null>(),
+  ]);
+
+  return { firstDate: first?.date ?? null, lastDate: last?.date ?? null };
+}
+
 export async function getShiftById(id: string): Promise<ShiftRecord | null> {
   await connectDb();
   const shift = await ShiftModel.findById(id).lean<LeanShift | null>();

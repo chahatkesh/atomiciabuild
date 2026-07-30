@@ -3,6 +3,7 @@ export {
   createShift,
   deleteShift,
   getShiftById,
+  getShiftDateRange,
   listShifts,
   toShiftRecord,
   updateShift,

@@ -1,0 +1,236 @@
+/*
+ * Week-at-a-glance grid. Column count is the only thing that changes with
+ * viewport: seven across on a desktop, then 4 / 2 / 1 so a day column never
+ * gets narrower than roughly 150px and the cards stay legible on a phone.
+ */
+
+.grid {
+  display: grid;
+  gap: var(--spacing-sm);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--rounded-md);
+  background: var(--color-surface-1);
+}
+
+.dayToday {
+  border-color: var(--color-accent-blue);
+  box-shadow: var(--elevation-selected);
+}
+
+.dayPast {
+  opacity: 0.55;
+}
+
+.dayHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+
+.weekday {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.dayDate {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.dayMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.shiftList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-height: 0;
+}
+
+.shiftCard {
+  width: 100%;
+  min-width: 0;
+  padding: var(--spacing-xs);
+  border: 1px solid var(--color-hairline);
+  border-left-width: 3px;
+  border-radius: var(--rounded-sm);
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.shiftCard:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-ink-muted);
+}
+
+.shiftCard:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+
+.statusFull {
+  border-left-color: var(--color-semantic-success);
+}
+
+.statusPartial {
+  border-left-color: var(--color-semantic-warning);
+}
+
+.statusEmpty {
+  border-left-color: var(--color-semantic-danger);
+}
+
+.shiftTime {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.shiftCount {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.roleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+/* Compact role chips; antd Tag is too padded to fit three across a day column. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--rounded-pill);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.chipMissing {
+  background: rgba(245, 166, 35, 0.16);
+  color: #f8c877;
+}
+
+.chipCovered {
+  background: rgba(34, 197, 94, 0.14);
+  color: #6ee7a0;
+}
+
+.emptyDay {
+  padding: var(--spacing-xs) 0;
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 12px;
+  color: var(--color-ink-muted);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--rounded-full);
+  flex: none;
+}
+
+.dotFull {
+  background: var(--color-semantic-success);
+}
+
+.dotPartial {
+  background: var(--color-semantic-warning);
+}
+
+.dotEmpty {
+  background: var(--color-semantic-danger);
+}
+
+/* Toolbar wraps before the week label gets squeezed on small screens. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.toolbarControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.summaryGrid {
+  display: grid;
+  gap: var(--spacing-sm);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}

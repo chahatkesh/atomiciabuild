@@ -1,28 +1,24 @@
-import type { RoleRequirements, StaffingStatus } from "@/types";
+import { clinicWeekDates, startOfClinicWeek, todayInClinic } from "@/lib/time/clinic";
+import { listClaimsForShifts } from "@/modules/claims/claim.service";
+import { buildWeekCoverage } from "@/modules/coverage/coverage.rules";
+import type { WeekCoverage } from "@/modules/coverage/types";
+import { getShiftDateRange, listShifts } from "@/modules/shifts/shift.service";
 
-export interface CoverageShiftSummary {
-  shiftId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  status: StaffingStatus;
-  requirements: RoleRequirements;
-  filled: RoleRequirements;
-  missing: RoleRequirements;
+/**
+ * Week-at-a-glance coverage. `weekStart` may be any date in the wanted week; it
+ * is snapped to that week's Monday, so the client can pass a raw picker value
+ * and never has to agree on where a week begins.
+ */
+export async function getWeekCoverage(weekStart?: string): Promise<WeekCoverage> {
+  const today = todayInClinic();
+  const dates = clinicWeekDates(startOfClinicWeek(weekStart ?? today));
+
+  const [shifts, dataRange] = await Promise.all([
+    listShifts({ from: dates[0], to: dates[6] }),
+    getShiftDateRange(),
+  ]);
+
+  const claimsByShift = await listClaimsForShifts(shifts.map((shift) => shift.id));
+
+  return buildWeekCoverage({ dates, shifts, claimsByShift, today, dataRange });
 }
-
-export interface CoverageWeekSummary {
-  weekStart: string;
-  weekEnd: string;
-  shifts: CoverageShiftSummary[];
-}
-
-export interface CoverageService {
-  getWeekCoverage(weekStart: string): Promise<CoverageWeekSummary>;
-}
-
-export const coverageService: CoverageService = {
-  async getWeekCoverage() {
-    throw new Error("Not implemented: getWeekCoverage (Phase 3)");
-  },
-};

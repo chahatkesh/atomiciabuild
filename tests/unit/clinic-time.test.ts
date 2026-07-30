@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildShiftWindow,
+  clinicWeekDates,
   intervalsOverlap,
   parseClinicDate,
   parseClinicTime,
+  startOfClinicWeek,
 } from "@/lib/time/clinic";
 
 describe("parseClinicDate", () => {
@@ -62,5 +64,53 @@ describe("intervalsOverlap", () => {
     const a = buildShiftWindow("2026-08-28", "09:00", "17:00");
     const b = buildShiftWindow("2026-08-28", "17:00", "22:00");
     expect(intervalsOverlap(a, b)).toBe(false);
+  });
+});
+
+describe("startOfClinicWeek", () => {
+  // 2026-08-03 is a Monday; the imported roster starts there.
+  it("returns the same date when given a Monday", () => {
+    expect(startOfClinicWeek("2026-08-03")).toBe("2026-08-03");
+  });
+
+  it("walks back to Monday from mid-week", () => {
+    expect(startOfClinicWeek("2026-08-06")).toBe("2026-08-03");
+  });
+
+  it("treats Sunday as the end of the week, not the start", () => {
+    expect(startOfClinicWeek("2026-08-09")).toBe("2026-08-03");
+  });
+
+  it("crosses a month boundary", () => {
+    expect(startOfClinicWeek("2026-08-02")).toBe("2026-07-27");
+  });
+
+  it("crosses a year boundary", () => {
+    expect(startOfClinicWeek("2027-01-01")).toBe("2026-12-28");
+  });
+
+  it("rejects malformed input", () => {
+    expect(() => startOfClinicWeek("03/08/2026")).toThrow();
+  });
+});
+
+describe("clinicWeekDates", () => {
+  it("returns seven consecutive dates starting at the given day", () => {
+    expect(clinicWeekDates("2026-08-03")).toEqual([
+      "2026-08-03",
+      "2026-08-04",
+      "2026-08-05",
+      "2026-08-06",
+      "2026-08-07",
+      "2026-08-08",
+      "2026-08-09",
+    ]);
+  });
+
+  it("spans a month boundary without gaps", () => {
+    const dates = clinicWeekDates("2026-08-31");
+    expect(dates).toHaveLength(7);
+    expect(dates[0]).toBe("2026-08-31");
+    expect(dates[6]).toBe("2026-09-06");
   });
 });

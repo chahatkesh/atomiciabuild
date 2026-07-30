@@ -104,6 +104,36 @@ export function intervalsOverlap(a: Interval, b: Interval): boolean {
   return a.startAt < b.endAt && a.endAt > b.startAt;
 }
 
+/** Today's date in clinic-local terms, which is what shift dates are keyed by. */
+export function todayInClinic(): string {
+  return dayjs().tz(getClinicTimezone()).format("YYYY-MM-DD");
+}
+
+/**
+ * Monday of the week containing `date`. Clinic rosters are read Monday-first,
+ * and the brief's recurring-shift example ("every Mon/Wed") assumes the same.
+ */
+export function startOfClinicWeek(date: string): string {
+  const parsed = dayjs(date, "YYYY-MM-DD", true);
+  if (!parsed.isValid()) {
+    throw new Error(`Invalid date: ${date}`);
+  }
+
+  // dayjs day(): 0 = Sunday. Shift so Monday is 0.
+  const offset = (parsed.day() + 6) % 7;
+  return parsed.subtract(offset, "day").format("YYYY-MM-DD");
+}
+
+/** The seven dates of the week beginning at `weekStart`. */
+export function clinicWeekDates(weekStart: string): string[] {
+  const start = dayjs(weekStart, "YYYY-MM-DD", true);
+  if (!start.isValid()) {
+    throw new Error(`Invalid date: ${weekStart}`);
+  }
+
+  return Array.from({ length: 7 }, (_, index) => start.add(index, "day").format("YYYY-MM-DD"));
+}
+
 export function minutesBetween(startAt: Date, endAt: Date): number {
   return dayjs(endAt).diff(dayjs(startAt), "minute");
 }

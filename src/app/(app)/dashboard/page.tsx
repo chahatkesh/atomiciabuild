@@ -1,37 +1,25 @@
-import { Empty } from "antd";
+import { CoverageDashboard } from "@/components/coverage";
+import { requireUser } from "@/modules/auth/server";
+import { spacing } from "@/theme";
 
-import { colors, spacing } from "@/theme";
+export default async function DashboardPage() {
+  const user = await requireUser();
+  const firstName = user.name.split(" ")[0];
 
-export default function DashboardPage() {
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: spacing.lg,
-        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-      }}
-    >
-      <div className="gradient-spotlight" style={{ minHeight: 180 }}>
-        <p className="type-caption" style={{ margin: `0 0 ${spacing.sm}px`, color: colors.ink }}>
-          Phase 3
-        </p>
-        <h2 className="type-subhead" style={{ margin: `0 0 ${spacing.sm}px` }}>
-          Week-at-a-glance coverage
-        </h2>
-        <p style={{ margin: 0, color: "rgba(255,255,255,0.85)", fontSize: 15, lineHeight: 1.3 }}>
-          Staffing status, missing roles, and live-ish polling land here next.
+    <div style={{ display: "grid", gap: spacing.lg }}>
+      <div>
+        <h1 className="type-display-md" style={{ margin: 0 }}>
+          {user.role === "manager" ? `Coverage, ${firstName}` : `Where you're needed, ${firstName}`}
+        </h1>
+        <p className="type-body-lg" style={{ margin: `${spacing.xxs}px 0 0` }}>
+          {user.role === "manager"
+            ? "Every shift this week, its staffing status, and which roles are still missing."
+            : "Shifts that are still short-staffed this week. Claim one from the Shifts page."}
         </p>
       </div>
 
-      <div className="surface-card">
-        <h2 className="type-headline" style={{ margin: `0 0 ${spacing.sm}px`, color: colors.ink }}>
-          Coverage dashboard
-        </h2>
-        <p className="type-body-lg" style={{ margin: `0 0 ${spacing.lg}px` }}>
-          Week-at-a-glance staffing coverage will be implemented in Phase 3.
-        </p>
-        <Empty description="No coverage data yet" />
-      </div>
+      <CoverageDashboard />
     </div>
   );
 }
