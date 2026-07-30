@@ -57,7 +57,7 @@ Every row gets a verdict: `accepted` | `repaired` | `merged` | `rejected`.
 
 `08:00` to `10:00+1` is a 26-hour span. The `+1` notation is understood — the
 row report says so — but the result still breaks the 16-hour limit from
-DECISIONS.md §14, so the row is rejected with `spans 26h` rather than silently
+DECISIONS.md §16, so the row is rejected with `spans 26h` rather than silently
 creating a shift nobody could work.
 
 ## Actual results

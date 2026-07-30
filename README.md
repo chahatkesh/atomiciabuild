@@ -1,3 +1,33 @@
+<div align="center">
+
+<a href="https://atomiciabuild.vercel.app">
+  <img src="docs/assets/banner.png" width="880" alt="Clinic Shift Scheduler — week-at-a-glance shift coverage. Managers schedule and assign, staff claim what fits, and capacity and overlap are enforced on the server, under load." />
+</a>
+
+<p>
+  <a href="https://atomiciabuild.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/live%20demo-atomiciabuild.vercel.app-0099ff?style=for-the-badge&labelColor=090909&logo=vercel&logoColor=white" /></a>
+  <a href="https://github.com/chahatkesh/atomiciabuild/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/chahatkesh/atomiciabuild/ci.yml?branch=main&style=for-the-badge&label=CI&labelColor=090909&color=22c55e" /></a>
+  <img alt="125 tests passing" src="https://img.shields.io/badge/tests-125%20passing-22c55e?style=for-the-badge&labelColor=090909" />
+</p>
+
+<p>
+  <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js%2016-141414?style=flat-square&logo=nextdotjs&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-141414?style=flat-square&logo=typescript&logoColor=3178c6" />
+  <img alt="MongoDB Atlas" src="https://img.shields.io/badge/MongoDB%20Atlas-141414?style=flat-square&logo=mongodb&logoColor=47a248" />
+  <img alt="Ant Design 6" src="https://img.shields.io/badge/Ant%20Design%206-141414?style=flat-square&logo=antdesign&logoColor=1677ff" />
+  <img alt="Vitest" src="https://img.shields.io/badge/Vitest-141414?style=flat-square&logo=vitest&logoColor=fcc72b" />
+</p>
+
+<p>
+  <a href="#a-60-second-tour"><b>60-second tour</b></a> ·
+  <a href="#how-the-brief-maps-to-the-app"><b>Brief → code</b></a> ·
+  <a href="./DECISIONS.md"><b>33 decisions</b></a> ·
+  <a href="./docs/architecture.md"><b>Architecture</b></a> ·
+  <a href="./docs/concurrency.md"><b>Concurrency</b></a>
+</p>
+
+</div>
+
 # Clinic Shift Scheduler
 
 A clinic rota app built for the Atomicia Build take-home. Managers create, edit
@@ -6,10 +36,8 @@ fit them. Capacity and overlap rules are enforced on the server and hold under
 concurrent load. The clinic's messy legacy spreadsheet is imported with a
 row-by-row audit trail.
 
-**Live:** https://atomiciabuild.vercel.app
-**Repository:** https://github.com/chahatkesh/atomiciabuild
-
-Every account uses the password **`Clinic123!`**.
+Sign in at **[atomiciabuild.vercel.app](https://atomiciabuild.vercel.app)** —
+every account uses the password **`Clinic123!`**.
 
 | Sign in as  | Email                              | What you'll see                                    |
 | ----------- | ---------------------------------- | -------------------------------------------------- |
@@ -62,7 +90,7 @@ Recurring shifts are the one stretch goal not built — see
 | Auth        | Auth.js v5 (Credentials + JWT sessions)                         |
 | Validation  | Zod 4                                                           |
 | Client data | TanStack Query (polling / refetch-on-focus)                     |
-| Tests       | Vitest — 113 unit + integration                                 |
+| Tests       | Vitest — 125 unit + integration                                 |
 | Tooling     | pnpm, Husky, commitlint, lint-staged, GitHub Actions            |
 | Deploy      | Vercel                                                          |
 
@@ -106,9 +134,9 @@ locally with the URI already in `.env.example`, then follow the same steps.
 pnpm test
 ```
 
-113 tests in one command. Unit tests (time maths, week bounds, shift rules,
-coverage aggregation, CSV normalizers) need nothing but the repo and pass under
-a foreign timezone as well as the clinic's.
+125 tests in one command. Unit tests (time maths, week bounds, shift rules,
+coverage aggregation, CSV normalizers, environment URL resolution) need nothing
+but the repo and pass under a foreign timezone as well as the clinic's.
 
 Integration tests cover what only breaks under real conditions: eight
 simultaneous claims on a one-slot shift, two overlapping claims fired at the
@@ -181,7 +209,7 @@ and it is the subject of the closing section of
 
 | Document                                             | Contents                                             |
 | ---------------------------------------------------- | ---------------------------------------------------- |
-| [DECISIONS.md](./DECISIONS.md)                       | 32 decisions with rationale and tradeoffs            |
+| [DECISIONS.md](./DECISIONS.md)                       | 33 decisions, indexed by theme — start with the five |
 | [docs/architecture.md](./docs/architecture.md)       | Layering, module boundaries, ESLint enforcement      |
 | [docs/concurrency.md](./docs/concurrency.md)         | Why claims need transactions and a version bump      |
 | [docs/import-pipeline.md](./docs/import-pipeline.md) | Normalizers, merge policy, verdict taxonomy          |

@@ -2,6 +2,77 @@
 
 Architectural and product decisions for the Clinic Shift Scheduler, with rationale and tradeoffs.
 
+Numbered in the order they were taken, and never renumbered — the code and the other
+docs cite them by number. **1–15 are one-liners**: stack choices made while
+scaffolding. **16–33 are the ones with real tradeoffs**, written as they came up.
+
+Nobody needs to read all of it. Pick from the index, or start with these five.
+
+## If you only read five
+
+- **[19 — Guarded counters and a per-user conflict point](#19-concurrency-guarded-counters-plus-a-per-user-conflict-point)** —
+  MongoDB transactions give snapshot isolation, not serializability, so two
+  overlapping claims by one person both commit. The fix, and the test that fires
+  eight claims at one slot to prove it.
+- **[20 — Editing a claimed shift releases only what broke](#20-editing-a-claimed-shift-releases-only-what-actually-broke)** —
+  the brief leaves this open. Releasing everyone is easy and punishes people who did
+  nothing wrong.
+- **[22 — Date formats are disambiguated by separator](#22-date-formats-are-disambiguated-by-separator)** —
+  `05/08/2026` is genuinely ambiguous until you notice the spreadsheet uses each
+  separator consistently. Every inference is reported on the row.
+- **[4 — Authorization lives outside the proxy](#4-authorization-outside-proxy)** —
+  why middleware is a UX redirect and never the security boundary (CVE-2025-29927).
+- **[33 — The app's own URL is never trusted](#33-the-apps-own-url-is-resolved-defensively-never-trusted)** —
+  one schemeless environment variable failed the build and 500'd every route.
+  Configuration is input too.
+
+## Index
+
+**Stack and structure** — [1 Next.js 16 + App Router](#1-nextjs-16-app-router) ·
+[2 MongoDB Atlas + Mongoose](#2-mongodb-atlas-mongoose) ·
+[5 Hybrid API + server actions](#5-hybrid-api-server-actions) ·
+[12 antd 6 + a dark design system](#12-ant-design-6-framer-dark-design-system) ·
+[13 Split client/server barrels](#13-barrels-per-module-split-clientserver) ·
+[32 The shell owns the page heading](#32-the-shell-owns-the-page-heading)
+
+**Auth and access** — [3 Credentials + JWT sessions](#3-authjs-v5-credentials-jwt) ·
+[4 Authorization outside the proxy](#4-authorization-outside-proxy) ·
+[18 API routes excluded from the matcher](#18-api-routes-excluded-from-the-proxy-matcher) ·
+[23 A documented demo password](#23-imported-staff-share-a-documented-password)
+
+**Correct under load** — [6 Transactions + version bumps](#6-concurrency-via-transactions-version-bumps) ·
+[8 Editing claimed shifts](#8-editing-claimed-shifts) ·
+[19 Guarded counters + a per-user conflict point](#19-concurrency-guarded-counters-plus-a-per-user-conflict-point) ·
+[20 Release only what broke](#20-editing-a-claimed-shift-releases-only-what-actually-broke)
+
+**Time and the data model** — [7 Clinic-local strings + derived instants](#7-time-modeling) ·
+[16 Duration bounds](#16-shift-duration-bounds-30-minutes-to-16-hours) ·
+[17 Unique natural key](#17-unique-natural-key-on-date-startat-endat) ·
+[25 Weeks run Monday to Sunday](#25-weeks-run-monday-to-sunday-and-the-server-decides) ·
+[30 Format from local strings, not instants](#30-shift-windows-are-formatted-from-clinic-local-strings-not-instants)
+
+**The messy CSV** — [9 Merge conflicting rows](#9-csv-import-merge-conflicting-rows) ·
+[10 Email is the identity key](#10-import-identity-key) ·
+[21 Merge by the higher count](#21-conflicting-import-rows-merge-by-taking-the-higher-count) ·
+[22 Dates disambiguated by separator](#22-date-formats-are-disambiguated-by-separator)
+
+**Coverage dashboard** — [26 A date picker, not a week picker](#26-jump-to-week-is-a-date-picker-not-a-week-picker) ·
+[27 A day's status is its worst shift](#27-a-days-status-is-its-worst-shift) ·
+[28 One page, two default lenses](#28-one-coverage-page-for-both-roles-with-a-different-default-lens) ·
+[29 Empty weeks offer a way out](#29-empty-weeks-offer-a-way-out) ·
+[31 Aggregation is a pure function](#31-coverage-aggregation-is-a-pure-function)
+
+**Running it** — [11 Polling behind a RealtimePort](#11-realtime-polling-first) ·
+[14 One shared Atlas database](#14-shared-atlas-db-for-local-production) ·
+[15 CI owns deployment](#15-github-actions-owns-cd-not-vercel-git-auto-deploy) ·
+[24 15-second polling](#24-live-updates-by-polling) ·
+[33 The app's URL is never trusted](#33-the-apps-own-url-is-resolved-defensively-never-trusted)
+
+And the honest weak spot:
+[one thing I'd do differently with more time](#one-thing-id-do-differently-with-more-time).
+
+---
+
 ## 1. Next.js 16 + App Router
 
 **Decision:** Use Next.js 16.2 with App Router, TypeScript 6.0, and Turbopack.
@@ -464,6 +535,38 @@ of only the dashboard having one.
 
 **Tradeoff:** Page copy lives away from the page. Worth it for four routes; a
 larger app would want each page to export its own header metadata.
+
+---
+
+## 33. The app's own URL is resolved defensively, never trusted
+
+**Decision:** `resolveAppOrigin()` derives the origin for absolute metadata from
+`AUTH_URL`, then the Vercel-provided hosts, then a canonical constant, and it
+cannot throw. `parseHttpUrl()` repairs the two forms a platform actually stores —
+a bare host with no scheme, a value that kept its quotes — and returns null for
+anything else. The auth entry module repairs `AUTH_URL` in `process.env` before
+any request can read it.
+
+**Rationale:** A production deploy had `AUTH_URL` set to a host with no scheme, and
+that one-character mistake took down two things at once. `next build` failed while
+collecting page data for `/_not-found`, because `metadataBase: new URL(...)` runs
+when the root layout module is evaluated — and the platform redacted the value as
+`[SENSITIVE]`, so the error named an unrelated route and pointed nowhere. Every
+route then 500s at runtime, verified with `next start`: `next-auth` re-reads
+`AUTH_URL` per request in `reqWithEnvURL()` and calls `new URL()` on it unguarded,
+and `src/proxy.ts` puts that on the path of every page request.
+
+Configuration is input, and this input comes from a dashboard nobody type-checks, so
+the importer's rule applies: repair what is unambiguous, drop what is not, never
+crash. A missing scheme is unambiguous — `VERCEL_URL` never carries one. Dropping an
+unrepairable value is the safe direction because `trustHost` is set, so Auth.js
+falls back to the request headers, which is what you want on Vercel anyway.
+
+**Tradeoff:** A malformed `AUTH_URL` is corrected silently rather than reported. The
+louder options were failing the build or 500-ing every request, and neither names
+the offending variable; nothing reads `getEnv().AUTH_URL`, so strict validation
+there bought an outage and nothing else. `tests/unit/app-url.test.ts` pins the
+fallback order and the repairs.
 
 ---
 
