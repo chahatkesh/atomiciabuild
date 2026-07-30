@@ -16,7 +16,7 @@ flowchart TD
     Users["modules/users"]
     Shifts["modules/shifts"]
     Claims["modules/claims"]
-    Import["modules/import"]
+    Import["modules/imports"]
     Coverage["modules/coverage"]
   end
   subgraph infra [Infrastructure]
