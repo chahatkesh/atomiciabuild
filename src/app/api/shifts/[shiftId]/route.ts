@@ -3,7 +3,8 @@ import type { NextRequest } from "next/server";
 import { handleApiRoute, jsonSuccess } from "@/lib";
 import { AppError } from "@/lib/errors/AppError";
 import { requireManager, requireUser } from "@/modules/auth/server";
-import { deleteShift, getShiftById, updateShift, updateShiftSchema } from "@/modules/shifts";
+import { getShiftWithClaims } from "@/modules/claims";
+import { deleteShift, updateShift, updateShiftSchema } from "@/modules/shifts";
 
 interface RouteContext {
   params: Promise<{ shiftId: string }>;
@@ -14,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     await requireUser();
     const { shiftId } = await params;
 
-    const shift = await getShiftById(shiftId);
+    const shift = await getShiftWithClaims(shiftId);
     if (!shift) {
       throw AppError.notFound("Shift not found");
     }
@@ -35,8 +36,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       throw AppError.validation("Invalid shift payload", parsed.error.flatten());
     }
 
-    const shift = await updateShift(shiftId, parsed.data);
-    return jsonSuccess(shift);
+    const { shift, releasedClaims } = await updateShift(shiftId, parsed.data);
+    return jsonSuccess({ ...shift, releasedClaims });
   });
 }
 
@@ -45,7 +46,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
     await requireManager();
     const { shiftId } = await params;
 
-    await deleteShift(shiftId);
-    return jsonSuccess({ id: shiftId, deleted: true });
+    const { releasedClaims } = await deleteShift(shiftId);
+    return jsonSuccess({ id: shiftId, deleted: true, releasedClaims });
   });
 }

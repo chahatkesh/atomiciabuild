@@ -1,8 +1,14 @@
+import { Types } from "mongoose";
+
 import { connectDb } from "@/lib/db/connect";
+import { withTransaction } from "@/lib/db/withTransaction";
 import { AppError } from "@/lib/errors/AppError";
 import { buildShiftWindow, parseClinicDate, parseClinicTime } from "@/lib/time/clinic";
+import { releaseAllClaimsForShift, revalidateShiftClaims } from "@/modules/claims/claim.service";
+import type { ReleasedClaimSummary } from "@/modules/claims/types";
 import { ShiftModel, type ShiftDocument } from "@/modules/shifts/shift.model";
-import { missingRoles, staffingStatus, validateShiftDuration } from "@/modules/shifts/shift.rules";
+import { validateShiftDuration } from "@/modules/shifts/shift.rules";
+import { toShiftRecord, type LeanShift } from "@/modules/shifts/shift.serializer";
 import type {
   CreateShiftInput,
   ListShiftsParams,
@@ -17,24 +23,7 @@ export type {
   UpdateShiftInput,
 } from "@/modules/shifts/types";
 
-type LeanShift = ShiftDocument & { _id: { toString(): string } };
-
-export function toShiftRecord(shift: LeanShift): ShiftRecord {
-  return {
-    id: shift._id.toString(),
-    date: shift.date,
-    startTime: shift.startTime,
-    endTime: shift.endTime,
-    startAt: shift.startAt.toISOString(),
-    endAt: shift.endAt.toISOString(),
-    requirements: shift.requirements,
-    filled: shift.filled,
-    missing: missingRoles(shift.requirements, shift.filled),
-    status: staffingStatus(shift.requirements, shift.filled),
-    legacyShiftIds: shift.legacyShiftIds ?? [],
-    version: shift.version ?? 0,
-  };
-}
+export { toShiftRecord };
 
 /**
  * Normalizes user/CSV input into a stored shift window and rejects impossible
@@ -126,64 +115,107 @@ export async function createShift(input: CreateShiftInput): Promise<ShiftRecord>
   }
 }
 
-export async function updateShift(id: string, input: UpdateShiftInput): Promise<ShiftRecord> {
-  await connectDb();
+export interface UpdateShiftResult {
+  shift: ShiftRecord;
+  /**
+   * Claims dropped because the edit invalidated them. The brief leaves this
+   * behaviour to us; surfacing it lets the manager see the human cost of an
+   * edit instead of it happening silently.
+   */
+  releasedClaims: ReleasedClaimSummary[];
+}
 
-  const existing = await ShiftModel.findById(id).lean<LeanShift | null>();
-  if (!existing) {
-    throw AppError.notFound("Shift not found");
+export async function updateShift(id: string, input: UpdateShiftInput): Promise<UpdateShiftResult> {
+  if (!Types.ObjectId.isValid(id)) {
+    throw AppError.badRequest("Invalid shift id");
   }
+  const shiftId = new Types.ObjectId(id);
 
-  const update: Partial<ShiftDocument> = {};
+  return withTransaction(async (session) => {
+    const existing = await ShiftModel.findById(shiftId).session(session).lean<LeanShift | null>();
+    if (!existing) {
+      throw AppError.notFound("Shift not found");
+    }
 
-  const timeChanged =
-    input.date !== undefined || input.startTime !== undefined || input.endTime !== undefined;
+    const update: Partial<ShiftDocument> = {};
 
-  if (timeChanged) {
-    const window = normalizeWindow(
-      input.date ?? existing.date,
-      input.startTime ?? existing.startTime,
-      input.endTime ?? existing.endTime,
-    );
+    const timeChanged =
+      input.date !== undefined || input.startTime !== undefined || input.endTime !== undefined;
 
-    update.date = window.date;
-    update.startTime = window.startTime;
-    update.endTime = window.endTime;
-    update.startAt = window.startAt;
-    update.endAt = window.endAt;
-  }
+    if (timeChanged) {
+      const window = normalizeWindow(
+        input.date ?? existing.date,
+        input.startTime ?? existing.startTime,
+        input.endTime ?? existing.endTime,
+      );
 
-  if (input.requirements) {
-    update.requirements = input.requirements;
-  }
+      update.date = window.date;
+      update.startTime = window.startTime;
+      update.endTime = window.endTime;
+      update.startAt = window.startAt;
+      update.endAt = window.endAt;
+    }
 
-  try {
-    const shift = await ShiftModel.findByIdAndUpdate(
-      id,
-      { $set: update, $inc: { version: 1 } },
-      { returnDocument: "after", runValidators: true },
-    ).lean<LeanShift | null>();
+    if (input.requirements) {
+      update.requirements = input.requirements;
+    }
 
+    try {
+      const updated = await ShiftModel.findByIdAndUpdate(
+        shiftId,
+        { $set: update, $inc: { version: 1 } },
+        { session, returnDocument: "after", runValidators: true },
+      ).lean<LeanShift | null>();
+
+      if (!updated) {
+        throw AppError.notFound("Shift not found");
+      }
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        throw AppError.conflict("A shift already exists for that date and time window");
+      }
+      throw error;
+    }
+
+    // Re-runs capacity and overlap against the new shape, and rewrites the
+    // denormalized filled counts from the surviving claims.
+    const releasedClaims = await revalidateShiftClaims(session, shiftId);
+
+    const shift = await ShiftModel.findById(shiftId).session(session).lean<LeanShift | null>();
     if (!shift) {
       throw AppError.notFound("Shift not found");
     }
 
-    return toShiftRecord(shift);
-  } catch (error) {
-    if (isDuplicateKeyError(error)) {
-      throw AppError.conflict("A shift already exists for that date and time window");
-    }
-    throw error;
-  }
+    return { shift: toShiftRecord(shift), releasedClaims };
+  });
 }
 
-export async function deleteShift(id: string): Promise<void> {
-  await connectDb();
-  const result = await ShiftModel.findByIdAndDelete(id).lean<LeanShift | null>();
+export interface DeleteShiftResult {
+  releasedClaims: number;
+}
 
-  if (!result) {
-    throw AppError.notFound("Shift not found");
+export async function deleteShift(id: string): Promise<DeleteShiftResult> {
+  if (!Types.ObjectId.isValid(id)) {
+    throw AppError.badRequest("Invalid shift id");
   }
+  const shiftId = new Types.ObjectId(id);
+
+  return withTransaction(async (session) => {
+    const shift = await ShiftModel.findById(shiftId).session(session).lean<LeanShift | null>();
+    if (!shift) {
+      throw AppError.notFound("Shift not found");
+    }
+
+    const releasedClaims = await releaseAllClaimsForShift(
+      session,
+      shiftId,
+      "Shift was deleted by a manager",
+    );
+
+    await ShiftModel.deleteOne({ _id: shiftId }, { session });
+
+    return { releasedClaims };
+  });
 }
 
 export async function countShifts(): Promise<number> {
