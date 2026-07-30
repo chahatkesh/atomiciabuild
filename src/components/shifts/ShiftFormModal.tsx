@@ -97,8 +97,8 @@ export function ShiftFormModal({
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
-          message="This shift already has claims"
-          description="Changing the time will re-validate every claim. Claims that break the overlap or capacity rules are released and the staff member is notified."
+          title="This shift already has claims"
+          description="Saving re-checks every claim against the new times and requirements. Claims that no longer fit are released, and you will see exactly who was dropped and why."
         />
       )}
 
@@ -127,11 +127,11 @@ export function ShiftFormModal({
           <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" />
         </Form.Item>
 
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
           <Form.Item
             name="startTime"
             label="Start time"
-            style={{ flex: 1 }}
+            style={{ flex: "1 1 140px" }}
             rules={[{ required: true, message: "Start time is required" }]}
           >
             <TimePicker style={{ width: "100%" }} format={TIME_FORMAT} minuteStep={15} />
@@ -140,7 +140,7 @@ export function ShiftFormModal({
           <Form.Item
             name="endTime"
             label="End time"
-            style={{ flex: 1 }}
+            style={{ flex: "1 1 140px" }}
             rules={[{ required: true, message: "End time is required" }]}
           >
             <TimePicker style={{ width: "100%" }} format={TIME_FORMAT} minuteStep={15} />
@@ -160,14 +160,14 @@ export function ShiftFormModal({
           />
         </Form.Item>
 
-        <div style={{ display: "flex", gap: 12 }}>
-          <Form.Item name="doctor" label="Doctors" style={{ flex: 1 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+          <Form.Item name="doctor" label="Doctors" style={{ flex: "1 1 96px" }}>
             <InputNumber min={0} max={50} style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item name="nurse" label="Nurses" style={{ flex: 1 }}>
+          <Form.Item name="nurse" label="Nurses" style={{ flex: "1 1 96px" }}>
             <InputNumber min={0} max={50} style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item name="receptionist" label="Receptionists" style={{ flex: 1 }}>
+          <Form.Item name="receptionist" label="Receptionists" style={{ flex: "1 1 96px" }}>
             <InputNumber min={0} max={50} style={{ width: "100%" }} />
           </Form.Item>
         </div>

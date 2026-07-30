@@ -90,7 +90,7 @@ export function AssignStaffModal({
           <Alert
             type="info"
             showIcon
-            message="This shift is already fully staffed."
+            title="This shift is already fully staffed."
             description="Remove someone first to free up a slot."
           />
         ) : (
