@@ -1,6 +1,6 @@
 # Data Model
 
-MongoDB collections (Mongoose). Phase 0 implements `users`; others are specified for upcoming phases.
+MongoDB collections (Mongoose). All four collections are implemented.
 
 ## users
 
@@ -39,50 +39,67 @@ time window. It is what turns the CSV's conflicting duplicate rows
 (5098 vs 5099) into a merge rather than two competing shifts, and it makes
 `POST /api/shifts` return `409` instead of silently double-booking a slot.
 
-## claims (Phase 2)
+## claims (implemented)
 
-| Field                     | Type     | Notes                           |
-| ------------------------- | -------- | ------------------------------- |
-| `shiftId`                 | ObjectId | ref shifts                      |
-| `staffId`                 | ObjectId | ref users                       |
-| `profession`              | enum     | At time of claim                |
-| `status`                  | enum     | `active` \| `released`          |
-| `releaseReason`           | string?  | Why released (shift edit, etc.) |
-| `assignedByManager`       | boolean  | Direct assignment flag          |
-| `createdAt` / `updatedAt` | Date     |                                 |
+| Field                     | Type      | Notes                                     |
+| ------------------------- | --------- | ----------------------------------------- |
+| `shiftId`                 | ObjectId  | ref shifts                                |
+| `userId`                  | ObjectId  | ref users                                 |
+| `profession`              | enum      | Denormalized at claim time                |
+| `status`                  | enum      | `active` \| `released`                    |
+| `source`                  | enum      | `self` \| `manager`                       |
+| `assignedByUserId`        | ObjectId? | The manager, when assigned                |
+| `releasedAt`              | Date?     |                                           |
+| `releaseReason`           | string?   | Why released (edit, deletion, by manager) |
+| `createdAt` / `updatedAt` | Date      | `createdAt` is the seniority tiebreak     |
 
-**Indexes:** `{ shiftId: 1, staffId: 1 }` unique, `{ staffId: 1, status: 1 }`
+**Indexes:**
 
-## importRuns (Phase 2)
+- `{ shiftId: 1, userId: 1 }` unique, **partial on `status: "active"`**
+- `{ userId: 1, status: 1 }`
+- `{ shiftId: 1, status: 1 }`
 
-| Field                       | Type     | Notes                                             |
-| --------------------------- | -------- | ------------------------------------------------- |
-| `initiatedBy`               | ObjectId | Manager user                                      |
-| `startedAt` / `completedAt` | Date     |                                                   |
-| `summary`                   | object   | `{ accepted, repaired, merged, rejected }` counts |
-| `rows`                      | array    | Per-row verdict (embedded or separate collection) |
+The partial filter matters: a plain unique index would forbid re-claiming a
+shift someone had previously left. Restricting uniqueness to active claims keeps
+double-claiming impossible while leaving the release/re-claim cycle open, and
+preserves released claims as history.
 
-## importRowReports (optional sub-collection)
+`profession` is copied onto the claim rather than read from the user so the
+capacity maths needs no join, and so a later re-import correcting someone's role
+cannot silently rewrite what they were rostered as.
 
-| Field         | Type     | Notes                                              |
-| ------------- | -------- | -------------------------------------------------- |
-| `importRunId` | ObjectId |                                                    |
-| `source`      | enum     | `staff` \| `shifts`                                |
-| `rowNumber`   | number   | 1-based CSV row                                    |
-| `raw`         | object   | Original row data                                  |
-| `verdict`     | enum     | `accepted` \| `repaired` \| `merged` \| `rejected` |
-| `message`     | string   | Human-readable explanation                         |
+## importRuns (implemented)
+
+Row reports are embedded rather than kept in a second collection: a run is read
+whole by the report page, and 158 rows sit far inside the 16MB document limit.
+
+| Field                      | Type      | Notes                                               |
+| -------------------------- | --------- | --------------------------------------------------- |
+| `source`                   | enum      | `seed` \| `upload`                                  |
+| `fileName`                 | string?   | Uploaded file name(s)                               |
+| `triggeredByUserId`        | ObjectId? | Manager, for uploads                                |
+| `startedAt` / `finishedAt` | Date      |                                                     |
+| `totals`                   | object    | `{ total, accepted, repaired, merged, rejected }`   |
+| `sections[]`               | array     | One per file: `kind`, `counts`, `persisted`, `rows` |
+| `sections[].rows[]`        | array     | `rowNumber`, `raw`, `verdict`, `issues[]`, `action` |
+
+**Indexes:** `{ createdAt: -1 }`
 
 ## Relationships
 
 ```mermaid
 erDiagram
-  users ||--o{ claims : "staffId"
+  users ||--o{ claims : "userId"
   shifts ||--o{ claims : "shiftId"
-  users ||--o{ importRuns : "initiatedBy"
-  importRuns ||--|{ importRowReports : "contains"
+  users ||--o{ importRuns : "triggeredByUserId"
 ```
 
 ## Denormalization
 
-`shift.filled` counters are updated atomically inside claim transactions. Source of truth for _who_ claimed is the `claims` collection; counters are a read optimization and validation aid.
+`shift.filled` counters are updated atomically inside claim transactions, using
+a conditional `$expr` filter that re-checks capacity at write time. The `claims`
+collection remains the source of truth for _who_ is on a shift; the counters are
+a read optimization and the enforcement point for capacity.
+
+They are recomputed from surviving claims whenever a shift is edited, so an edit
+cannot leave the counter disagreeing with reality.

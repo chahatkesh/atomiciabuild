@@ -44,22 +44,48 @@ Phased delivery for the Clinic Shift Scheduler take-home.
 | Staff list shifts            | 200                                         |
 | Unknown shift id             | 404                                         |
 
-## Phase 2 — Claims + Import
+## Phase 2 — Claims + Import ✓
 
-- [ ] Claim model + unique index
-- [ ] Transactional `claimService` (capacity + overlap)
-- [ ] API routes for claim/unclaim
-- [ ] Staff "My Shifts" page with claim/unclaim buttons
-- [ ] Manager direct assignment
-- [ ] Import normalizers (staff + shifts)
-- [ ] `importService.importFromFiles()`
-- [ ] Seed script for `docs/problem-statement/` CSVs
-- [ ] Manager CSV upload UI
-- [ ] Import Report page with row-level detail
-- [ ] Shift edit → claim revalidation + release
-- [ ] Integration tests for concurrent claims
+- [x] Claim model + partial-unique index on active claims
+- [x] Transactional `claimService` (capacity + overlap + per-user serialization)
+- [x] API routes for claim/unclaim
+- [x] Staff "My Shifts" page with leave buttons
+- [x] Manager direct assignment + remove from roster
+- [x] Import normalizers (staff + shifts)
+- [x] `runImport()` shared by seed and upload
+- [x] Seed script for `docs/problem-statement/` CSVs (`pnpm seed`)
+- [x] Manager CSV upload UI
+- [x] Import Report page with row-level detail
+- [x] Shift edit → claim revalidation + release
+- [x] Integration tests for concurrent claims
 
-**Exit criteria:** All brief business rules enforced server-side; deployed site pre-populated from CSV; import report complete.
+**Exit criteria met.** Import results against the supplied CSVs:
+
+| File         | Rows | Accepted | Repaired | Merged | Rejected | Written |
+| ------------ | ---- | -------- | -------- | ------ | -------- | ------- |
+| `staff.csv`  | 41   | 16       | 18       | 3      | 4        | 34      |
+| `shifts.csv` | 117  | 35       | 50       | 27     | 5        | 85      |
+
+Rejected staff rows: unknown role (Janitor), missing email, missing name, and an
+email already belonging to a different person. Rejected shift rows: `2026-02-30`,
+a 18h window, a 26h `+1` window, a missing start time, and a zero-length window.
+
+Business rules verified end-to-end:
+
+| Check                                        | Result                                |
+| -------------------------------------------- | ------------------------------------- |
+| 8 simultaneous claims, 1 nurse slot          | exactly 1 winner, `filled.nurse = 1`  |
+| 12 simultaneous claims, 3 nurse slots        | exactly 3 winners                     |
+| Overlapping claim                            | 409 with the clashing window named    |
+| Two overlapping claims submitted at once     | exactly 1 accepted                    |
+| Back-to-back shifts (16:00 end, 16:00 start) | both allowed                          |
+| Profession the shift does not need           | rejected                              |
+| Manager assign                               | same rules apply                      |
+| Staff assigning someone else                 | 403                                   |
+| Requirement lowered below claims             | newest released, oldest kept          |
+| Shift time moved onto another claim          | that claim released                   |
+| Shift deleted                                | claims released                       |
+| Re-import                                    | idempotent; never lowers requirements |
 
 ## Phase 3 — Coverage dashboard
 
