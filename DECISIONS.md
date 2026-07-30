@@ -37,7 +37,7 @@ Nobody needs to read all of it. Pick from the index, or start with these five.
 
 **Auth and access** — [3 Credentials + JWT sessions](#3-authjs-v5-credentials-jwt) ·
 [4 Authorization outside the proxy](#4-authorization-outside-proxy) ·
-[18 API routes excluded from the matcher](#18-api-routes-excluded-from-the-proxy-matcher) ·
+[18 API and metadata image routes excluded](#18-api-and-metadata-image-routes-excluded-from-the-proxy-matcher) ·
 [23 A documented demo password](#23-imported-staff-share-a-documented-password)
 
 **Correct under load** — [6 Transactions + version bumps](#6-concurrency-via-transactions-version-bumps) ·
@@ -250,16 +250,19 @@ requirements. Given the coverage dashboard is per-window, that is the better fit
 
 ---
 
-## 18. API routes excluded from the proxy matcher
+## 18. API and metadata image routes excluded from the proxy matcher
 
-**Decision:** `src/proxy.ts` matches page routes only; `/api/*` is excluded.
+**Decision:** `src/proxy.ts` matches page routes only; `/api/*`,
+`/opengraph-image`, and `/twitter-image` are excluded.
 
 **Rationale:** The proxy redirects unauthenticated traffic to `/login`, which is
 right for pages and wrong for an API — a fetch client got a `307` to an HTML
 page instead of a JSON error. Route handlers already call
 `requireUser()`/`requireManager()`, so excluding `/api` lets them answer with a
-proper `401`/`403` envelope. This reinforces decision 4: the proxy is a UX
-redirect, never the security boundary.
+proper `401`/`403` envelope. The same trap hit the file-based OG/Twitter image
+routes: crawlers follow `og:image` without a session and must receive a PNG, not
+a login redirect. This reinforces decision 4: the proxy is a UX redirect, never
+the security boundary.
 
 ---
 
