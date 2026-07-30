@@ -31,6 +31,57 @@ interface NavItem {
   icon: ReactNode;
 }
 
+interface PageHeader {
+  title: string;
+  subtitle: string;
+}
+
+/**
+ * One heading per page, owned by the shell so the nav label and the visible
+ * title can never disagree. Copy is role-aware because the same routes mean
+ * different things to a manager and to someone looking for a shift.
+ */
+function pageHeaderFor(pathname: string, role: UserRole, firstName: string): PageHeader {
+  const isManager = role === "manager";
+
+  switch (pathname) {
+    case ROUTES.dashboard:
+      return isManager
+        ? {
+            title: `Coverage, ${firstName}`,
+            subtitle: "Every shift this week, its staffing status, and which roles are missing.",
+          }
+        : {
+            title: `Where you're needed, ${firstName}`,
+            subtitle: "Shifts still short-staffed this week. Claim one from the Shifts page.",
+          };
+    case ROUTES.shifts:
+      return isManager
+        ? {
+            title: "Shifts",
+            subtitle: "Create, edit, and assign. Every claim is checked before it sticks.",
+          }
+        : {
+            title: "Shifts",
+            subtitle:
+              "Claim anything that still needs your profession and does not clash with a shift you already have.",
+          };
+    case ROUTES.myShifts:
+      return {
+        title: "My Shifts",
+        subtitle: "Everything you have claimed. Leaving one puts the slot back for someone else.",
+      };
+    case ROUTES.imports:
+      return {
+        title: "Import Report",
+        subtitle:
+          "Upload a clinic spreadsheet, or review what the importer accepted, repaired, merged, and rejected.",
+      };
+    default:
+      return { title: "Workspace", subtitle: "" };
+  }
+}
+
 export function AppShell({ children, role, userName }: AppShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -80,19 +131,29 @@ export function AppShell({ children, role, userName }: AppShellProps) {
     textDecoration: "none",
   });
 
-  const navLinks = items.map((item) => (
-    <Link
-      key={item.key}
-      href={item.href}
-      style={linkStyle(pathname === item.key)}
-      onClick={() => setMobileOpen(false)}
-    >
-      {item.icon}
-      {item.label}
-    </Link>
-  ));
+  const navLinks = items.map((item) => {
+    const active = pathname === item.key;
 
-  const pageTitle = items.find((item) => item.key === pathname)?.label ?? "Workspace";
+    return (
+      <Link
+        key={item.key}
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        style={linkStyle(active)}
+        onClick={() => setMobileOpen(false)}
+      >
+        {item.icon}
+        {item.label}
+      </Link>
+    );
+  });
+
+  const header = pageHeaderFor(pathname, role, userName.split(" ")[0]);
+  const signOutButton = (
+    <Button type="default" onClick={() => signOut({ callbackUrl: ROUTES.login })}>
+      Sign out
+    </Button>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: colors.canvas, color: colors.ink }}>
@@ -137,6 +198,7 @@ export function AppShell({ children, role, userName }: AppShellProps) {
 
         <nav
           className="app-nav-links"
+          aria-label="Primary"
           style={{
             display: "flex",
             alignItems: "center",
@@ -146,7 +208,9 @@ export function AppShell({ children, role, userName }: AppShellProps) {
           {navLinks}
         </nav>
 
-        <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
+        {/* Below 810px the identity block moves into the drawer — a 375px header
+            cannot hold a name and a 44px pill without crowding the app name. */}
+        <div className="app-header-account" style={{ alignItems: "center", gap: spacing.sm }}>
           <span
             className="type-caption"
             style={{
@@ -158,9 +222,7 @@ export function AppShell({ children, role, userName }: AppShellProps) {
           >
             {userName}
           </span>
-          <Button type="default" onClick={() => signOut({ callbackUrl: ROUTES.login })}>
-            Sign out
-          </Button>
+          {signOutButton}
         </div>
       </header>
 
@@ -176,8 +238,13 @@ export function AppShell({ children, role, userName }: AppShellProps) {
             {role === "manager" ? "Manager workspace" : "Staff workspace"}
           </p>
           <h1 className="type-display-md" style={{ margin: 0, color: colors.ink }}>
-            {pageTitle}
+            {header.title}
           </h1>
+          {header.subtitle ? (
+            <p className="type-body-lg" style={{ margin: `${spacing.xs}px 0 0`, maxWidth: "68ch" }}>
+              {header.subtitle}
+            </p>
+          ) : null}
         </div>
         {children}
       </main>
@@ -203,7 +270,18 @@ export function AppShell({ children, role, userName }: AppShellProps) {
           <span className="type-caption" style={{ marginBottom: spacing.sm }}>
             {userName}
           </span>
-          {navLinks}
+          <nav aria-label="Primary" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {navLinks}
+          </nav>
+          <div
+            style={{
+              marginTop: spacing.md,
+              paddingTop: spacing.md,
+              borderTop: `1px solid ${colors.hairlineSoft}`,
+            }}
+          >
+            {signOutButton}
+          </div>
         </div>
       </Drawer>
     </div>

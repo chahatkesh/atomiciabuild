@@ -287,6 +287,10 @@ a:hover {
   background: var(--color-canvas) !important;
 }
 
+.app-header-account {
+  display: flex;
+}
+
 @media (max-width: 810px) {
   .app-nav-links {
     display: none !important;
@@ -294,5 +298,33 @@ a:hover {
 
   .app-nav-menu-btn {
     display: inline-flex !important;
+  }
+
+  /* Name and sign-out live in the drawer on small screens. */
+  .app-header-account {
+    display: none;
+  }
+}
+
+/*
+ * antd stacks nothing in a card head, so a title plus a wide control in `extra`
+ * overflows a phone. Stack them instead and let the control take the width.
+ */
+@media (max-width: 640px) {
+  .ant-card .ant-card-head-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+
+  .ant-card .ant-card-extra {
+    width: 100%;
+    margin-inline-start: 0;
+    overflow-x: auto;
+  }
+
+  .ant-card .ant-card-extra .ant-select {
+    min-width: 0 !important;
+    flex: 1;
   }
 }
